@@ -1,0 +1,76 @@
+{
+  "documents": [
+    {
+      "id": "rain-general",
+      "title": "Heavy Rain Safety Basics",
+      "tags": ["rain", "rainfall", "flood", "monsoon", "waterlogging"],
+      "content": "During heavy rain, avoid unnecessary travel and never walk or drive through water of unknown depth; as little as 15 cm of moving water can destabilize a person and 30 cm can float many vehicles. Keep electronics, documents and emergency supplies in waterproof bags on higher shelves. Monitor official forecasts and local administration updates. Keep phones charged and have torches ready in case of power cuts. Stay away from drains, culverts and riverbanks."
+    },
+    {
+      "id": "travel-rain",
+      "title": "Traveling in Wet Weather",
+      "tags": ["travel", "road", "commute", "traffic", "visibility"],
+      "content": "Wet roads reduce tire grip and braking effectiveness; reduce speed and increase following distance. Use headlights in low visibility and watch for waterlogged underpasses, potholes hidden by standing water, and fallen branches. Check conditions before departure and allow extra journey time. If conditions deteriorate mid-journey, stop at a safe, elevated place rather than continuing through deep water."
+    },
+    {
+      "id": "farm-rain",
+      "title": "Farm Planning Around Rain",
+      "tags": ["farmer", "farming", "agriculture", "field", "irrigation", "drainage", "harvest"],
+      "content": "Before anticipated heavy rain, clear field drainage channels and bunds so excess water can escape, and delay spraying or fertilizer application since rainfall washes chemicals away and run-off can pollute waterways. Move harvested produce, seeds and equipment to raised, covered storage. After waterlogging, inspect fields for standing water and disease pressure before resuming work. These are general precautions; follow local agricultural extension advice for crop-specific decisions."
+    },
+    {
+      "id": "farm-heat",
+      "title": "Farm Work in Extreme Heat",
+      "tags": ["farmer", "heat", "livestock", "irrigation", "workers"],
+      "content": "Schedule heavy field labor for early morning or late evening, avoiding peak afternoon hours. Ensure drinking water and shade rest points for workers, and provide shade and water for livestock. Irrigate during cooler parts of the day to reduce evaporation losses. Watch for signs of heat exhaustion in people working outdoors and rotate tasks. For crop-specific heat management, consult local agricultural extension services."
+    },
+    {
+      "id": "heat-general",
+      "title": "Extreme Heat Precautions",
+      "tags": ["heat", "heatwave", "temperature", "hydration", "sun"],
+      "content": "Reduce strenuous outdoor activity during the hottest hours, typically early to mid afternoon. Drink water regularly even without feeling thirsty and avoid alcohol and very sugary drinks. Use shade, cool indoor spaces or fans, and wear light loose clothing. Check on elderly neighbors, children, and anyone working outdoors, who are most vulnerable to heat stress. Cool water immersion or moving to shade are the immediate steps for suspected heat exhaustion, followed by seeking medical help if symptoms are severe."
+    },
+    {
+      "id": "wind-general",
+      "title": "Strong Wind Safety",
+      "tags": ["wind", "gusts", "storm", "debris", "trees"],
+      "content": "Secure or bring indoors loose outdoor objects such as furniture, signboards and construction materials that can become projectiles. Keep clear of trees, hoardings, power lines and weak structures which may shed branches or panels in gusts. Drivers of high-sided vehicles should take extra care on exposed roads and bridges. Postpone work at height and outdoor events until winds ease."
+    },
+    {
+      "id": "storm-thunder",
+      "title": "Thunderstorm and Lightning Safety",
+      "tags": ["thunderstorm", "lightning", "storm", "hail"],
+      "content": "When thunderstorms are forecast or ongoing, move indoors into a substantial building and stay away from windows. Avoid open fields, tall isolated trees, and metal fences. Unplug sensitive electronics; avoid using corded phones and plumbing during the storm. Wait at least 30 minutes after the last thunder before resuming outdoor activity. Hail can accompany severe storms, so shelter animals and vehicles where possible."
+    },
+    {
+      "id": "flood-potential",
+      "title": "Flood Potential Awareness",
+      "tags": ["flood", "waterlogging", "low-lying", "drainage"],
+      "content": "Sustained heavy rainfall can raise flood risk, especially in low-lying areas, basements and places with poor drainage. Move vehicles and valuables above expected water levels, know your nearest elevated ground, and be ready to move if local authorities advise. Never assume floodwater is shallow: water hiding damaged road surfaces and open manholes is a leading cause of harm. Flood forecasts are probabilistic; always follow official warnings when issued."
+    },
+    {
+      "id": "disaster-preparedness",
+      "title": "Household Disaster Preparedness",
+      "tags": ["emergency", "kit", "preparedness", "evacuation", "checklist"],
+      "content": "Keep an emergency kit with drinking water, non-perishable food, torch, batteries, first-aid supplies, essential medicines, copies of identity documents, and some cash. Agree a family communication plan and know your evacuation routes and nearest shelter. Charge phones before expected severe weather. Follow instructions from local authorities, police, and disaster management agencies during emergencies; they coordinate evacuation and relief."
+    },
+    {
+      "id": "official-sources",
+      "title": "Official Weather and Alert Sources (India)",
+      "tags": ["official", "imd", "ndma", "alerts", "authorities", "warnings"],
+      "content": "WeatherGPT produces its own risk interpretation from meteorological data; it is not an official warning system. For authoritative forecasts and warnings in India, consult the India Meteorological Department (imd.gov.in and Mausam app) and national/state disaster management authorities (ndma.gov.in). In a life-threatening emergency contact local emergency services; India's national emergency helpline is 112. WeatherGPT guidance complements but never replaces official alerts."
+    },
+    {
+      "id": "activity-planning",
+      "title": "Planning Outdoor Activities Around Weather",
+      "tags": ["activity", "event", "outdoor", "sports", "postpone"],
+      "content": "For outdoor events and activities, check the forecast and risk assessment beforehand and identify an indoor fallback or postponement option. Build in buffer time around the worst weather windows rather than scheduling tight transitions. For multi-hour events, plan shade or shelter access and hydration points in hot conditions, and lightning-safe shelter during storm season. Communicate changes to participants early."
+    },
+    {
+      "id": "vulnerable-people",
+      "title": "Helping Vulnerable People in Extreme Weather",
+      "tags": ["elderly", "children", "vulnerable", "neighbors", "community"],
+      "content": "Elderly people, young children, pregnant women, and people with chronic illness are most affected by heat and by prolonged power or water outages. Check on them before and during heat waves and severe weather, help with errands that would force exposure, and share official warning information with them. Community halls and cooling/relief centers are often opened by local authorities during extremes; know the nearest one."
+    }
+  ]
+}

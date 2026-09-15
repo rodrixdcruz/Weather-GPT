@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Build output
+dist/
+frontend/dist/
+build/
+
+# Secrets — real keys stay local; commit .env.example templates only
+.env
+.env.local
+.env.*.local
+backend/.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Freebuff tooling metadata
+.freebuff/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.log

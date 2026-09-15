@@ -1,0 +1,109 @@
+{
+  "profile": "default",
+  "description": "India-oriented baseline risk profile using established meteorological categories. Rainfall bands follow the India Meteorological Department daily rainfall classification; wind bands map Beaufort force 6+ (strong breeze) upward; heat bands follow IMD heat-wave awareness ranges. Treat every value as a configurable baseline, not immutable scientific truth.",
+  "severities": ["low", "moderate", "high", "extreme"],
+  "thresholds": {
+    "rainfall_mm_per_day": {
+      "moderate": 35.6,
+      "high": 64.5,
+      "extreme": 115.6,
+      "note": "IMD daily rainfall categories: large/heavy 35.6-64.4, very heavy 64.5-115.5, extremely heavy >=115.6"
+    },
+    "wind_kph": {
+      "moderate": 38.9,
+      "high": 62.0,
+      "extreme": 88.2,
+      "note": "Beaufort 6 (strong breeze) ~39-49 kph, gale ~62-74, storm ~88+; converted from the 10.8/17.2/24.5 m/s baseline"
+    },
+    "temperature_c": {
+      "moderate": 32.0,
+      "high": 40.0,
+      "extreme": 46.0
+    },
+    "apparent_temperature_c": {
+      "moderate": 32.0,
+      "high": 40.0,
+      "extreme": 46.0
+    },
+    "humidity_pct": {
+      "moderate": 60.0,
+      "high": 75.0,
+      "extreme": 85.0
+    },
+    "flood_potential_mm_per_day": {
+      "moderate": 64.5,
+      "high": 115.6,
+      "extreme": 204.6
+    },
+    "us_aqi": {
+      "moderate": 51.0,
+      "high": 101.0,
+      "extreme": 151.0,
+      "note": "US EPA AQI bands: Moderate >=51, Unhealthy for sensitive groups >=101, Unhealthy >=151; 201+ (Very Unhealthy) and 301+ (Hazardous) also map to EXTREME with deeper scores"
+    },
+    "severe_weather_codes": [95, 96, 99],
+    "windy_hours_min": 3
+  },
+  "role_priorities": {
+    "customer": ["air_quality", "severe_weather", "flood_potential", "rainfall", "heat_stress", "high_temperature", "strong_wind", "poor_travel_conditions", "activity_disruption"],
+    "farmer": ["rainfall", "heat_stress", "high_temperature", "air_quality", "strong_wind", "flood_potential", "activity_disruption", "poor_travel_conditions", "severe_weather"],
+    "traveler": ["poor_travel_conditions", "activity_disruption", "air_quality", "rainfall", "strong_wind", "severe_weather", "flood_potential", "heat_stress", "high_temperature"],
+    "disaster_management_officer": ["severe_weather", "flood_potential", "air_quality", "rainfall", "strong_wind", "activity_disruption", "heat_stress", "high_temperature", "poor_travel_conditions"]
+  },
+  "guidance_templates": {
+    "rainfall": {
+      "customer": "Carry rain protection and plan indoor alternatives for the wettest hours.",
+      "farmer": "Schedule field work around the wettest hours; check drainage in low-lying plots.",
+      "traveler": "Expect wet roads and slower traffic; keep a rain cover for gear and documents.",
+      "disaster_management_officer": "Track rainfall against local drainage capacity; pre-position crews in low-lying wards."
+    },
+    "high_temperature": {
+      "customer": "Limit strenuous outdoor activity and drink water regularly.",
+      "farmer": "Shift heavy labor to early morning; ensure livestock and workers have shade and water.",
+      "traveler": "Travel early or late in the day and keep water reachable.",
+      "disaster_management_officer": "Issue heat advisories and verify cooling/water points are stocked."
+    },
+    "heat_stress": {
+      "customer": "Avoid outdoor exertion in the afternoon and rest in shade; watch for dizziness or exhaustion.",
+      "farmer": "Stop heavy field work in peak afternoon hours; rotate workers with shade breaks.",
+      "traveler": "Avoid midday exertion; carry electrolytes and rest in shade often.",
+      "disaster_management_officer": "Open heat-relief points and coordinate outreach to outdoor laborers."
+    },
+    "strong_wind": {
+      "customer": "Secure loose outdoor items and be careful near trees and hoardings.",
+      "farmer": "Delay spraying and staking work; secure temporary field structures.",
+      "traveler": "Expect crosswinds on exposed roads and bridges; drive with both hands on the wheel.",
+      "disaster_management_officer": "Warn about loose debris and roof damage; monitor for power line faults."
+    },
+    "severe_weather": {
+      "customer": "Stay indoors away from windows; postpone outdoor plans until the storm passes.",
+      "farmer": "Move people and animals to safe shelter; secure equipment before the storm arrives.",
+      "traveler": "Do not travel during the storm; wait it out in a sturdy building.",
+      "disaster_management_officer": "Activate monitoring cells and pre-position rapid-response teams."
+    },
+    "flood_potential": {
+      "customer": "Avoid low-lying areas, underpasses and basements during heavy rain.",
+      "farmer": "Clear field drainage channels; move stored produce above expected water levels.",
+      "traveler": "Never drive or walk through water of unknown depth; plan alternate routes.",
+      "disaster_management_officer": "Coordinate with irrigation/flood control; alert flood-prone settlements early."
+    },
+    "poor_travel_conditions": {
+      "customer": "Allow extra travel time and check conditions before leaving.",
+      "farmer": "Plan market trips outside the worst weather windows.",
+      "traveler": "Reduce speed, use headlights, and expect delays on wet or windy stretches.",
+      "disaster_management_officer": "Coordinate with traffic police on diversions for waterlogged or debris-strewn routes."
+    },
+    "activity_disruption": {
+      "customer": "Have an indoor backup for outdoor events and errands.",
+      "farmer": "Reschedule harvesting, spraying or other time-critical field work.",
+      "traveler": "Expect cancellations or delays for outdoor activities; keep flexible bookings.",
+      "disaster_management_officer": "Assess which public events and worksites need postponement or evacuation support."
+    },
+    "air_quality": {
+      "customer": "Air quality is poor, so limit outdoor exertion and keep windows closed during the worst hours.",
+      "farmer": "Schedule outdoor field work for cleaner-air hours; burning waste or stubble is not advised today.",
+      "traveler": "Expect hazy conditions; people with respiratory sensitivities should carry medication and limit exertion outdoors.",
+      "disaster_management_officer": "Monitor AQI against health-advisory thresholds; coordinate advisories for schools and outdoor work sites."
+    }
+  }
+}
