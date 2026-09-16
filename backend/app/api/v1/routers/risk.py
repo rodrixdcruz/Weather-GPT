@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
+from app.api.v1.deps import effective_role, optional_session
 from app.core.logging import get_logger
+from app.models.models import LoginSession
 from app.schemas.schemas import (
     RiskAssessmentResponse,
     RiskItemResponse,
@@ -20,13 +22,18 @@ async def get_risk_assessment(
     longitude: float = Query(..., ge=-180, le=180),
     role: str = Query("customer", description="customer | farmer | traveler | disaster_management_officer"),
     scenario: str = Query("normal", description="Demo-only scenario override (mock provider)"),
+    session: LoginSession | None = Depends(optional_session),
 ):
     """Role-aware weather-risk assessment for a location.
 
     Reuses the weather service for data (no duplicated provider logic).
     The role changes ordering/emphasis/guidance — never the measurements.
+    A signed-in session overrides the `role` parameter: the role is locked
+    at login, so it cannot be switched from the dashboard.
     """
     from app.services.risk.roles import normalize_role
+
+    role = effective_role(role, session)
 
     provider = get_weather_provider(scenario=scenario)
     try:

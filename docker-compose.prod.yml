@@ -1,0 +1,165 @@
+# Production stack for WeatherGPT.
+#
+#   docker compose -f docker-compose.prod.yml build
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# How this differs from docker-compose.yml (the DEVELOPMENT stack):
+#   * images are BUILT from backend/Dockerfile and frontend/Dockerfile, so
+#     dependencies are installed at image build time — nothing is pip/npm
+#     installed at container start, and no source is bind-mounted;
+#   * the frontend is the production nginx build on port 80, not a Vite dev
+#     server, and it reverse-proxies /api/ to backend:8000;
+#   * only the frontend publishes a port. Postgres and Ollama stay on the
+#     internal compose network and are never reachable from outside;
+#   * FastAPI's interactive docs are off (DOCS_ENABLED=false) and CORS comes
+#     from the environment;
+#   * it runs under its own compose project name, so it gets its own `pgdata`
+#     volume (weathergpt-prod_pgdata) and cannot touch development data. The
+#     schema is created on first start and the admin account is seeded.
+#
+# Values come from the root .env (see .env.example). Real secrets belong there
+# — never in this file, which is committed.
+
+name: weathergpt-prod
+
+services:
+  db:
+    image: postgis/postgis:16-3.4-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-weathergpt}
+      # Defaults to the development credentials so an existing pgdata volume
+      # keeps working (Postgres only applies POSTGRES_PASSWORD when it first
+      # initializes a volume). Rotate it deliberately: set a new value here AND
+      # run `ALTER USER weathergpt WITH PASSWORD '<new>'` against the database.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-weathergpt}
+      POSTGRES_DB: ${POSTGRES_DB:-weathergpt}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-weathergpt} -d ${POSTGRES_DB:-weathergpt}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    # Deliberately NOT published: reachable only as db:5432 on the compose
+    # network. Uncomment for host-side administration if you really need it.
+    # ports:
+    #   - "127.0.0.1:5432:5432"
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      # Database — internal service name, never a public host.
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-weathergpt}:${POSTGRES_PASSWORD:-weathergpt}@db:5432/${POSTGRES_DB:-weathergpt}
+
+      # App
+      ENV: ${ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # Set this to the real frontend origin for cross-origin use. Behind the
+      # nginx image the SPA calls /api/ on its own origin, so CORS is not
+      # exercised at all and the default is enough.
+      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost"]}
+      # Interactive API docs are off in production.
+      DOCS_ENABLED: ${DOCS_ENABLED:-false}
+
+      # Weather + air quality (open_meteo needs no API key)
+      WEATHER_PROVIDER: ${WEATHER_PROVIDER:-open_meteo}
+      WEATHER_API_KEY: ${WEATHER_API_KEY:-}
+      WEATHER_API_BASE_URL: ${WEATHER_API_BASE_URL:-}
+      AIR_QUALITY_ENABLED: ${AIR_QUALITY_ENABLED:-true}
+
+      # Risk engine + safety layer
+      RISK_PROFILE: ${RISK_PROFILE:-default}
+      SAFETY_ALERT_PROVIDER: ${SAFETY_ALERT_PROVIDER:-null}
+
+      # AI tiers. "mock" needs nothing; "ollama" and "hybrid" use the optional
+      # ollama profile below (docker compose -f docker-compose.prod.yml
+      # --profile ai up -d).
+      AI_PROVIDER: ${AI_PROVIDER:-mock}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-}
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
+      OLLAMA_TIMEOUT_SECONDS: ${OLLAMA_TIMEOUT_SECONDS:-120}
+      ESCALATION_PROVIDER: ${ESCALATION_PROVIDER:-auto}
+      ESCALATION_PROVIDERS: ${ESCALATION_PROVIDERS:-}
+      ESCALATION_COOLDOWN_SECONDS: ${ESCALATION_COOLDOWN_SECONDS:-65}
+      ESCALATION_API_KEY: ${ESCALATION_API_KEY:-}
+      ESCALATION_API_KEYS: ${ESCALATION_API_KEYS:-}
+      ESCALATION_MODEL: ${ESCALATION_MODEL:-}
+      ESCALATION_BASE_URL: ${ESCALATION_BASE_URL:-}
+      ESCALATION_TIMEOUT_SECONDS: ${ESCALATION_TIMEOUT_SECONDS:-30}
+      SOLAR_API_KEY: ${SOLAR_API_KEY:-}
+      SOLAR_MODEL: ${SOLAR_MODEL:-solar-pro4}
+      SOLAR_API_BASE_URL: ${SOLAR_API_BASE_URL:-https://api.upstage.ai/v1/solar}
+      SOLAR_TIMEOUT_SECONDS: ${SOLAR_TIMEOUT_SECONDS:-30}
+      RAG_ENABLED: ${RAG_ENABLED:-true}
+      RAG_TOP_K: ${RAG_TOP_K:-3}
+      RAG_KNOWLEDGE_DIR: ${RAG_KNOWLEDGE_DIR:-}
+
+      # Dashboard auth. The admin password is REQUIRED: production must not
+      # silently fall back to a published default. Seeding is idempotent, so
+      # this only applies to accounts that do not exist yet.
+      AUTH_ENABLED: ${AUTH_ENABLED:-true}
+      AUTH_AUTO_INIT_DB: ${AUTH_AUTO_INIT_DB:-true}
+      AUTH_SESSION_TTL_HOURS: ${AUTH_SESSION_TTL_HOURS:-12}
+      AUTH_ADMIN_USERNAME: ${AUTH_ADMIN_USERNAME:-admin}
+      AUTH_ADMIN_PASSWORD: "${AUTH_ADMIN_PASSWORD:?set AUTH_ADMIN_PASSWORD in the root .env before deploying}"
+      AUTH_ADMIN_DISPLAY_NAME: ${AUTH_ADMIN_DISPLAY_NAME:-Operations Admin}
+      AUTH_DEMO_USERNAME: ${AUTH_DEMO_USERNAME:-demo}
+      # The demo account is a known-credential login: set a real value here, or
+      # delete the `demo` row, before exposing this to the internet.
+      AUTH_DEMO_PASSWORD: ${AUTH_DEMO_PASSWORD:-demo123}
+      AUTH_DEMO_DISPLAY_NAME: ${AUTH_DEMO_DISPLAY_NAME:-Demo User}
+
+      # SOS: must stay false until a real dispatch service is wired up.
+      SOS_DISPATCH_ENABLED: ${SOS_DISPATCH_ENABLED:-false}
+      SOS_DISPATCH_WEBHOOK_URL: ${SOS_DISPATCH_WEBHOOK_URL:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).getcode() == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 25s
+      retries: 3
+    restart: unless-stopped
+    # Not published: the frontend's nginx reverse proxy reaches it internally.
+    # Uncomment to reach the API directly from the host during debugging.
+    # ports:
+    #   - "127.0.0.1:8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      # Public entry point. Set FRONTEND_PORT if 80 is taken on the host.
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Optional local AI. Start with:
+  #   docker compose -f docker-compose.prod.yml --profile ai up -d
+  # then pull a model once:
+  #   docker compose -f docker-compose.prod.yml exec ollama ollama pull llama3.2
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ai"]
+    volumes:
+      - ollama_models:/root/.ollama
+    restart: unless-stopped
+    # Not published: the backend reaches it as http://ollama:11434.
+
+volumes:
+  pgdata:
+  ollama_models:

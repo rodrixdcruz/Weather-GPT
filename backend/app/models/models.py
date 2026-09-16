@@ -19,6 +19,45 @@ def _uuid() -> str:
     return str(uuid.uuid4())
 
 
+class Account(Base):
+    """A dashboard login.
+
+    `role` is the role CHOSEN AT LOGIN and is copied onto each LoginSession:
+    the role is locked for the lifetime of that session (the UI cannot switch
+    it — the user must log out to pick a different one). `is_admin` unlocks
+    the admin panel.
+    """
+
+    __tablename__ = "accounts"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    username: Mapped[str] = mapped_column(String, unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String)
+    display_name: Mapped[str] = mapped_column(String, default="")
+    role: Mapped[str] = mapped_column(String, default="customer")
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    sessions: Mapped[list["LoginSession"]] = relationship(back_populates="account")
+
+
+class LoginSession(Base):
+    """An authenticated dashboard session. `role` is frozen at login time."""
+
+    __tablename__ = "login_sessions"
+
+    token: Mapped[str] = mapped_column(String, primary_key=True)
+    account_id: Mapped[str] = mapped_column(ForeignKey("accounts.id"))
+    role: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    account: Mapped["Account"] = relationship(back_populates="sessions")
+
+
 class User(Base):
     __tablename__ = "users"
 

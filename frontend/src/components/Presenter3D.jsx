@@ -4,6 +4,16 @@
 // Keeps the same contract as the 2D mascot: state poses + weather prop +
 // risk-trend mood (celebrate a risk drop, look concerned about a rise),
 // and falls back to the 2D SVG version when WebGL is unavailable.
+//
+// ARM ANGLES — read before changing. rotation.z rotates the xy plane about
+// the pivot, so a point at local (0, -len) moves to (len·sin θ, -len·cos θ):
+//   * right arm (pivot at +x): θ > 0 swings the hand OUTWARD (away from the
+//     body) and up; θ < 0 swings it ACROSS the chest into the neck/head.
+//   * left arm (pivot at -x): mirrored — θ < 0 is the outward one.
+// Getting a sign wrong buries the hand (and the weather prop) inside the
+// torso, which is exactly the bug this file was rewritten to fix. Every pose
+// below is also kept far enough from the head sphere (centre 0, 0.90; r 0.42)
+// that nothing intersects it — see the commented clearances.
 import { Component, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
@@ -15,6 +25,12 @@ const STATE_COLOR = {
   thinking: '#a78bfa',
   speaking: '#f59e0b',
 }
+
+// Shared body proportions, so arms and props can never disagree about where
+// the shoulder is or how long an arm reaches.
+const SHOULDER = { x: 0.44, y: 0.26, z: 0.05 }
+const ARM_LEN = 0.46 // pivot -> hand centre
+const HEAD_CENTER_Y = 0.9 // world y of the head sphere centre (r = 0.42)
 
 function webglAvailable() {
   try {
@@ -75,82 +91,97 @@ function Controls() {
   return null
 }
 
-// Weather prop held in the raised left hand; counter-rotated each frame so
-// it stays upright regardless of the arm pose.
+// One articulated arm (upper + forearm capsule, plus the hand sphere).
+function Arm() {
+  return (
+    <>
+      <mesh position={[0, -0.215, 0]}>
+        <capsuleGeometry args={[0.07, 0.3, 4, 10]} />
+        <meshStandardMaterial color="#f3c19d" roughness={0.55} />
+      </mesh>
+      <mesh position={[0, -0.46, 0]}>
+        <sphereGeometry args={[0.08, 16, 16]} />
+        <meshStandardMaterial color="#f3c19d" roughness={0.55} />
+      </mesh>
+    </>
+  )
+}
+
+// Weather prop held in the raised left hand. The arm group carries the pose
+// angle; the prop inside it is counter-rotated every frame so the umbrella
+// (or card) stays upright no matter how the arm is posed.
 function WeatherProp({ kind, mood }) {
-  // Arm raised high when celebrating, lowered when concerned, else mid pose.
-  const holdZ = mood === 'improved' ? 1.45 : mood === 'worsened' ? 0.5 : 0.95
-  const restZ = mood === 'improved' ? 1.0 : mood === 'worsened' ? 0.15 : 0.3
+  // Pose angle for the LEFT arm: negative = outward/up (see file header).
+  // Raised high when celebrating, lowered when concerned, else mid pose.
+  const holdZ = mood === 'improved' ? -2.55 : mood === 'worsened' ? -1.25 : -1.95
+  const restZ = mood === 'improved' ? -0.9 : mood === 'worsened' ? -0.42 : -0.26
   const armL = useRef(null)
   const prop = useRef(null)
   const dropRefs = useRef([])
   const drops = useMemo(
-    () => [0, 1, 2, 3].map((i) => ({ off: i * 0.24, x: -0.5 + i * 0.32, z: 0.14 - (i % 2) * 0.3 })),
+    () => [0, 1, 2, 3].map((i) => ({ off: i * 0.24, x: -0.28 + i * 0.19, z: 0.12 - (i % 2) * 0.26 })),
     [],
   )
 
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime()
     if (prop.current && armL.current) {
-      prop.current.rotation.z = -armL.current.rotation.z + Math.sin(t * 1.4) * 0.07
+      // Cancel the arm's rotation (prop stays upright) with a slight lean
+      // back towards the character so the canopy reads as being held over
+      // them rather than stuck out sideways.
+      prop.current.rotation.z = -armL.current.rotation.z + 0.05 + Math.sin(t * 1.4) * 0.05
     }
     if (kind === 'umbrella') {
       dropRefs.current.forEach((m, i) => {
         if (!m) return
         const p = (t * 0.85 + drops[i].off) % 1
-        m.position.y = 0.95 - p * 1.05
+        m.position.y = 0.68 - p * 0.8
         m.scale.setScalar(0.7 + Math.sin(p * Math.PI) * 0.5)
       })
     }
   })
 
   if (kind === 'umbrella') {
+    // Canopy radius is deliberately small (0.36): at the mid hold angle the
+    // hand sits at x ≈ -0.84, so the canopy's inner edge lands near -0.44 and
+    // stays clear of the head (which reaches x ≈ -0.40 at its widest).
     return (
-      <group>
-        <group ref={armL} rotation-z={holdZ}>
-          {/* left arm + hand */}
-          <mesh position={[0, -0.3, 0]}>
-            <capsuleGeometry args={[0.075, 0.48, 4, 8]} />
-            <meshStandardMaterial color="#f3c19d" roughness={0.55} />
+      <group ref={armL} rotation-z={holdZ}>
+        <Arm />
+        {/* prop pivot sits exactly on the hand */}
+        <group ref={prop} position={[0, -ARM_LEN, 0]}>
+          {/* shaft running up out of the grip */}
+          <mesh position={[0, 0.26, 0]}>
+            <cylinderGeometry args={[0.022, 0.022, 0.72, 10]} />
+            <meshStandardMaterial color="#1e3a8a" roughness={0.4} />
           </mesh>
-          <mesh position={[0, -0.62, 0]}>
-            <sphereGeometry args={[0.085, 16, 16]} />
-            <meshStandardMaterial color="#f3c19d" roughness={0.55} />
+          {/* curved handle, below the grip */}
+          <mesh position={[0, -0.13, 0]}>
+            <torusGeometry args={[0.06, 0.018, 8, 16, Math.PI]} />
+            <meshStandardMaterial color="#1e3a8a" roughness={0.4} />
           </mesh>
-          {/* prop pivot at the hand */}
-          <group ref={prop} position={[0, -0.74, 0]}>
-            {/* shaft + curved handle */}
-            <mesh position={[0, 0.35, 0]}>
-              <cylinderGeometry args={[0.024, 0.024, 0.98, 8]} />
-              <meshStandardMaterial color="#1e3a8a" roughness={0.4} />
+          {/* canopy: faceted low-poly cone reads as umbrella panels */}
+          <mesh position={[0, 0.76, 0]}>
+            <coneGeometry args={[0.36, 0.26, 10]} />
+            <meshStandardMaterial color="#3b82f6" roughness={0.35} flatShading />
+          </mesh>
+          <mesh position={[0, 0.92, 0]}>
+            <sphereGeometry args={[0.03, 8, 8]} />
+            <meshStandardMaterial color="#1e3a8a" roughness={0.4} />
+          </mesh>
+          {/* rain bouncing off the canopy */}
+          {drops.map((d, i) => (
+            <mesh
+              key={i}
+              ref={(el) => {
+                dropRefs.current[i] = el
+              }}
+              position={[d.x, 0.6, d.z]}
+            >
+              <sphereGeometry args={[0.028, 8, 8]} />
+              <meshStandardMaterial color="#7dd3fc" roughness={0.2} transparent opacity={0.9} />
             </mesh>
-            <mesh position={[0, -0.13, 0]}>
-              <torusGeometry args={[0.075, 0.02, 8, 16, Math.PI]} />
-              <meshStandardMaterial color="#1e3a8a" roughness={0.4} />
-            </mesh>
-            {/* canopy: faceted low-poly cone reads as umbrella panels */}
-            <mesh position={[0, 0.88, 0]}>
-              <coneGeometry args={[0.56, 0.4, 10]} />
-              <meshStandardMaterial color="#3b82f6" roughness={0.35} flatShading />
-            </mesh>
-            <mesh position={[0, 1.06, 0]}>
-              <sphereGeometry args={[0.035, 8, 8]} />
-              <meshStandardMaterial color="#1e3a8a" roughness={0.4} />
-            </mesh>
-            {/* rain bouncing off the canopy */}
-            {drops.map((d, i) => (
-              <mesh
-                key={i}
-                ref={(el) => {
-                  dropRefs.current[i] = el
-                }}
-                position={[d.x, 0.6, d.z]}
-              >
-                <sphereGeometry args={[0.032, 8, 8]} />
-                <meshStandardMaterial color="#7dd3fc" roughness={0.2} transparent opacity={0.9} />
-              </mesh>
-            ))}
-          </group>
+          ))}
         </group>
       </group>
     )
@@ -160,37 +191,30 @@ function WeatherProp({ kind, mood }) {
     const shade = kind === 'shade-card'
     return (
       <group ref={armL} rotation-z={holdZ}>
-        <mesh position={[0, -0.3, 0]}>
-          <capsuleGeometry args={[0.075, 0.48, 4, 8]} />
-          <meshStandardMaterial color="#f3c19d" roughness={0.55} />
-        </mesh>
-        <mesh position={[0, -0.62, 0]}>
-          <sphereGeometry args={[0.085, 16, 16]} />
-          <meshStandardMaterial color="#f3c19d" roughness={0.55} />
-        </mesh>
-        <group ref={prop} position={[0, -0.74, 0]}>
+        <Arm />
+        <group ref={prop} position={[0, -ARM_LEN, 0]}>
           {/* stick up to the card */}
           <mesh position={[0, 0.2, 0]}>
-            <cylinderGeometry args={[0.018, 0.018, 0.4, 8]} />
+            <cylinderGeometry args={[0.016, 0.016, 0.4, 8]} />
             <meshStandardMaterial color="#8a5a3c" roughness={0.6} />
           </mesh>
-          {/* the card itself */}
-          <mesh position={[0, 0.62, 0]}>
-            <boxGeometry args={[0.42, 0.5, 0.035]} />
+          {/* the card itself — sits beside the head, never inside it */}
+          <mesh position={[0, 0.6, 0]}>
+            <boxGeometry args={[0.38, 0.44, 0.035]} />
             <meshStandardMaterial color={shade ? '#fcd34d' : '#e2e8f0'} roughness={0.5} />
           </mesh>
           {shade ? (
             <group>
               {/* sun disc with a soft glow */}
-              <mesh position={[0.06, 0.66, 0.03]}>
-                <sphereGeometry args={[0.095, 16, 16]} />
+              <mesh position={[0.03, 0.63, 0.03]}>
+                <sphereGeometry args={[0.085, 16, 16]} />
                 <meshStandardMaterial color="#f59e0b" emissive="#f59e0b" emissiveIntensity={0.7} roughness={0.3} />
               </mesh>
               {[0, 1, 2, 3].map((i) => {
                 const a = (i / 4) * Math.PI * 2
                 return (
-                  <mesh key={i} position={[0.06 + Math.cos(a) * 0.16, 0.66 + Math.sin(a) * 0.16, 0.03]}>
-                    <sphereGeometry args={[0.018, 8, 8]} />
+                  <mesh key={i} position={[0.03 + Math.cos(a) * 0.145, 0.63 + Math.sin(a) * 0.145, 0.03]}>
+                    <sphereGeometry args={[0.016, 8, 8]} />
                     <meshStandardMaterial color="#b45309" roughness={0.5} />
                   </mesh>
                 )
@@ -199,16 +223,16 @@ function WeatherProp({ kind, mood }) {
           ) : (
             <group>
               {/* little cloud */}
-              <mesh position={[-0.05, 0.6, 0.03]}>
-                <sphereGeometry args={[0.07, 12, 12]} />
+              <mesh position={[-0.05, 0.58, 0.03]}>
+                <sphereGeometry args={[0.062, 12, 12]} />
                 <meshStandardMaterial color="#f8fafc" roughness={0.7} />
               </mesh>
-              <mesh position={[0.04, 0.64, 0.03]}>
-                <sphereGeometry args={[0.058, 12, 12]} />
+              <mesh position={[0.03, 0.62, 0.03]}>
+                <sphereGeometry args={[0.052, 12, 12]} />
                 <meshStandardMaterial color="#f8fafc" roughness={0.7} />
               </mesh>
-              <mesh position={[0.09, 0.58, 0.03]}>
-                <sphereGeometry args={[0.05, 12, 12]} />
+              <mesh position={[0.08, 0.56, 0.03]}>
+                <sphereGeometry args={[0.044, 12, 12]} />
                 <meshStandardMaterial color="#cbd5e1" roughness={0.7} />
               </mesh>
             </group>
@@ -218,17 +242,10 @@ function WeatherProp({ kind, mood }) {
     )
   }
 
-  // No prop: resting left arm
+  // No prop: resting left arm, just clear of the torso (surface at x = -0.4).
   return (
     <group ref={armL} rotation-z={restZ}>
-      <mesh position={[0, -0.3, 0]}>
-        <capsuleGeometry args={[0.075, 0.48, 4, 8]} />
-        <meshStandardMaterial color="#f3c19d" roughness={0.55} />
-      </mesh>
-      <mesh position={[0, -0.62, 0]}>
-        <sphereGeometry args={[0.085, 16, 16]} />
-        <meshStandardMaterial color="#f3c19d" roughness={0.55} />
-      </mesh>
+      <Arm />
     </group>
   )
 }
@@ -240,7 +257,7 @@ function Confetti() {
   const bits = useMemo(
     () =>
       Array.from({ length: 14 }, (_, i) => ({
-        x: -1.15 + ((i * 0.41) % 2.3),
+        x: -1.1 + ((i * 0.41) % 2.2),
         z: -0.5 + ((i * 0.53) % 1.0),
         off: (i * 0.13) % 1,
         speed: 0.55 + (i % 5) * 0.12,
@@ -333,16 +350,17 @@ function Character({ state, weatherProp, mood }) {
       }
     }
 
-    // Right arm: both arms up for a cheer, hand hovering at the cheek when
-    // worried, otherwise the normal voice-state gestures.
+    // Right arm. POSITIVE angles are outward (pivot is at +x) — every pose
+    // below keeps the hand clear of both the torso (|x| < 0.4) and the head
+    // sphere (centre y 0.90, r 0.42), so nothing ever sinks into the neck.
     if (armR.current) {
       const g = armR.current
-      if (celebrating) g.rotation.z = -2.95 + Math.sin(t * 8) * 0.22
-      else if (concerned) g.rotation.z = -2.2 + Math.sin(t * 15) * 0.06
-      else if (state === 'listening') g.rotation.z = -1.7 + Math.sin(t * 5) * 0.08
-      else if (state === 'speaking') g.rotation.z = -0.7 + Math.sin(t * 6) * 0.28
-      else if (state === 'thinking') g.rotation.z = -2.55 + Math.sin(t * 1.6) * 0.05
-      else g.rotation.z = -0.45 + Math.sin(t * 6.5) * 0.38
+      if (celebrating) g.rotation.z = 2.78 + Math.sin(t * 8) * 0.18 // arm up in a V
+      else if (concerned) g.rotation.z = 1.45 + Math.sin(t * 15) * 0.05 // tense, arm out
+      else if (state === 'listening') g.rotation.z = 2.25 + Math.sin(t * 5) * 0.06 // mic raised
+      else if (state === 'speaking') g.rotation.z = 1.75 + Math.sin(t * 6) * 0.28 // gesturing
+      else if (state === 'thinking') g.rotation.z = 2.62 + Math.sin(t * 1.6) * 0.04 // hand up beside the head
+      else g.rotation.z = 2.05 + Math.sin(t * 6.5) * 0.32 // raised friendly wave
     }
 
     if (eyes.current) {
@@ -383,45 +401,39 @@ function Character({ state, weatherProp, mood }) {
           <capsuleGeometry args={[0.4, 0.32, 6, 16]} />
           <meshStandardMaterial color="#1f3a6e" roughness={0.65} />
         </mesh>
-        <mesh position={[0, 0.3, 0]} rotation-x={Math.PI / 2}>
+        <mesh position={[0, 0.22, 0]} rotation-x={Math.PI / 2}>
           <torusGeometry args={[0.3, 0.045, 8, 24]} />
           <meshStandardMaterial color="#0ea5e9" roughness={0.4} />
         </mesh>
 
-        {/* right arm: wave / gesture / mic / chin */}
-        <group ref={armR} position={[0.46, 0.22, 0]} rotation-z={-0.45}>
-          <mesh position={[0, -0.3, 0]}>
-            <capsuleGeometry args={[0.075, 0.48, 4, 8]} />
-            <meshStandardMaterial color="#f3c19d" roughness={0.55} />
-          </mesh>
-          <mesh position={[0, -0.62, 0]}>
-            <sphereGeometry args={[0.085, 16, 16]} />
-            <meshStandardMaterial color="#f3c19d" roughness={0.55} />
-          </mesh>
+        {/* right arm: wave / gesture / mic / hand-beside-head */}
+        <group ref={armR} position={[SHOULDER.x, SHOULDER.y, SHOULDER.z]} rotation-z={2.05}>
+          <Arm />
           {state === 'listening' && (
             <group>
-              {/* handheld mic */}
-              <mesh position={[0, -0.74, 0]}>
-                <cylinderGeometry args={[0.038, 0.045, 0.13, 10]} />
+              {/* handheld mic, held out at the hand */}
+              <mesh position={[0, -0.56, 0]}>
+                <cylinderGeometry args={[0.034, 0.04, 0.13, 10]} />
                 <meshStandardMaterial color="#1e293b" roughness={0.35} />
               </mesh>
-              <mesh position={[0, -0.85, 0]}>
-                <sphereGeometry args={[0.07, 12, 12]} />
+              <mesh position={[0, -0.66, 0]}>
+                <sphereGeometry args={[0.062, 12, 12]} />
                 <meshStandardMaterial color="#94a3b8" metalness={0.65} roughness={0.25} />
               </mesh>
             </group>
           )}
         </group>
 
-        {/* left arm + weather prop */}
-        <group position={[-0.46, 0.22, 0]}>
+        {/* left arm + weather prop (poses are negative = outward) */}
+        <group position={[-SHOULDER.x, SHOULDER.y, SHOULDER.z]}>
           <WeatherProp kind={weatherProp} mood={mood} />
         </group>
 
         {/* head */}
-        <group ref={head} position={[0, 0.62, 0]}>
-          <mesh position={[0, 0.02, 0]}>
-            <cylinderGeometry args={[0.09, 0.1, 0.14, 10]} />
+        <group ref={head} position={[0, 0.56, 0]}>
+          {/* neck: long enough to actually meet the torso top (world y 0.34) */}
+          <mesh position={[0, 0, 0]}>
+            <cylinderGeometry args={[0.09, 0.1, 0.24, 10]} />
             <meshStandardMaterial color="#d99a72" roughness={0.55} />
           </mesh>
           <mesh position={[0, 0.44, 0]}>
@@ -517,6 +529,10 @@ function Character({ state, weatherProp, mood }) {
   )
 }
 
+// The camera is pulled back and widened just enough to keep the raised prop
+// and the outstretched arms inside the frame (they reach |x| ≈ 1.25).
+const CAMERA = { fov: 45, position: [0, 0.7, 3.9] }
+
 export default function Presenter3D({ state = 'idle', size = 72, weatherProp = null, hint = null, mood = null }) {
   const [glOK] = useState(webglAvailable)
   const [failed, setFailed] = useState(false)
@@ -531,7 +547,7 @@ export default function Presenter3D({ state = 'idle', size = 72, weatherProp = n
           <Canvas
             dpr={[1, 2]}
             gl={{ alpha: true, antialias: true }}
-            camera={{ fov: 42, position: [0, 0.6, 3.6] }}
+            camera={CAMERA}
             style={{ background: 'transparent', touchAction: 'none' }}
             onCreated={({ gl }) => {
               gl.domElement.addEventListener('webglcontextlost', () => setFailed(true))

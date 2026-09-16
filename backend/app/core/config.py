@@ -4,6 +4,7 @@ Never hardcode API keys, DB URLs, or provider names — this is the one
 place that reads them.
 """
 from functools import lru_cache
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,7 +16,17 @@ class Settings(BaseSettings):
     ENV: str = "development"
     LOG_LEVEL: str = "INFO"
     API_V1_PREFIX: str = "/api/v1"
+    # Browser origins allowed to call this API. Development default; a
+    # deployment MUST set the real frontend origin (e.g.
+    # CORS_ORIGINS='["https://weathergpt.example.com"]'). When the frontend is
+    # served behind the nginx image the SPA calls /api/ on its own origin, so
+    # requests are same-origin and CORS is not exercised at all.
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+    # Interactive API docs (/docs, /redoc, /openapi.json). Enabled by default so
+    # local development keeps them; production sets DOCS_ENABLED=false so the
+    # full route surface (including /admin/*) is not advertised publicly.
+    # Endpoint paths and behaviour are unchanged either way.
+    DOCS_ENABLED: bool = True
 
     # --- Database (PostgreSQL) ---
     DATABASE_URL: str = "postgresql+psycopg://weathergpt:weathergpt@localhost:5432/weathergpt"
@@ -31,11 +42,46 @@ class Settings(BaseSettings):
     AI_API_KEY: str | None = None
     AI_MODEL: str | None = None
 
-    # --- Solar Pro 4 (Upstage API, hybrid escalation tier) ---
-    # Used ONLY by the "hybrid" provider when the local Ollama model is
+    # --- Escalation tier (hybrid provider's second model) ---
+    # Used ONLY by the "hybrid" provider, when the local Ollama model is
     # unavailable/times out or the question needs broader knowledge.
-    # SOLAR_API_KEY must stay backend-only: never expose it to the
+    #
+    # Any OpenAI-compatible chat-completions endpoint works. The named
+    # providers in services/ai/presets.py all have PERMANENT FREE TIERS, so
+    # this tier needs no budget:
+    #   "auto"      (default) - Groq when ESCALATION_API_KEY is set,
+    #                           otherwise the keyless OVHcloud endpoint
+    #   "groq" | "gemini" | "nvidia" | "openrouter" | "mistral"  (free, keyed)
+    #   "ovhcloud"  - free and KEYLESS (no signup at all)
+    #   "solar"     - the previous paid tier, still supported
+    # ESCALATION_API_KEY must stay backend-only: never expose it to the
     # frontend, logs, or API responses.
+    ESCALATION_PROVIDER: str = "auto"
+    # Optional ordered failover chain for the escalation tier, e.g.
+    # "groq,ovhcloud" (try Groq, then the keyless OVHcloud tier on any
+    # failure including rate limits). Comma-separated preset names;
+    # "auto" entries resolve like ESCALATION_PROVIDER would. Empty = the
+    # single provider chosen by ESCALATION_PROVIDER (no failover).
+    ESCALATION_PROVIDERS: str = ""
+    # After a provider fails with a rate limit, skip it for this many seconds
+    # so later requests try the next provider (or the data fallback)
+    # immediately instead of waiting for the 429 again.
+    ESCALATION_COOLDOWN_SECONDS: float = 65.0
+    ESCALATION_API_KEY: str | None = None
+    # Per-provider keys as a JSON map string, e.g. '{"groq": "gsk_..."}'.
+    # Deliberately a plain str: pydantic-settings (2.5.x) decodes complex
+    # env values as JSON *before* field validators run, so a dict-typed
+    # field would crash startup on the blank value a compose passthrough
+    # (${VAR:-}) produces. Parsed in hybrid_provider._per_provider_keys().
+    ESCALATION_API_KEYS: str = ""
+
+    ESCALATION_MODEL: str | None = None  # None = the preset's default model (applies to every chain member)
+    ESCALATION_BASE_URL: str | None = None  # None = the preset's default URL (applies to every chain member)
+    ESCALATION_TIMEOUT_SECONDS: float = 30.0
+
+    # --- Solar Pro 4 (Upstage API) — legacy escalation credentials ---
+    # Read only when ESCALATION_PROVIDER=solar, so an existing key keeps
+    # working. Solar is no longer the default escalation tier.
     SOLAR_API_KEY: str | None = None
     SOLAR_MODEL: str = "solar-pro4"
     SOLAR_API_BASE_URL: str = "https://api.upstage.ai/v1/solar"
@@ -76,6 +122,22 @@ class Settings(BaseSettings):
     # default: WeatherGPT then shows ONLY its own derived status, clearly
     # labeled, and never fabricates official alerts.
     SAFETY_ALERT_PROVIDER: str = "null"
+
+    # --- Auth / dashboard sessions ---
+    # Accounts live in the database and are seeded on startup when missing.
+    # CHANGE THESE for anything beyond a local demo. Secrets stay in env
+    # vars (.env) — never in code or the frontend.
+    AUTH_ENABLED: bool = True
+    AUTH_SESSION_TTL_HOURS: int = 12
+    AUTH_ADMIN_USERNAME: str = "admin"
+    AUTH_ADMIN_PASSWORD: str = "admin123"
+    AUTH_ADMIN_DISPLAY_NAME: str = "Operations Admin"
+    AUTH_DEMO_USERNAME: str = "demo"
+    AUTH_DEMO_PASSWORD: str = "demo123"
+    AUTH_DEMO_DISPLAY_NAME: str = "Demo User"
+    # Create the tables + seed accounts automatically at startup (idempotent).
+    # Never fatal: if the database is down the API still serves weather/risk.
+    AUTH_AUTO_INIT_DB: bool = True
 
     # --- SOS / emergency dispatch ---
     # IMPORTANT: leave disabled until a real dispatch service is wired up.

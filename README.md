@@ -30,7 +30,7 @@ USER → LOCATION (typed coords, device geolocation, or place-name search)
 | --- | --- | --- |
 | 1 | Docker + PostgreSQL + FastAPI + React foundation | ✅ `docker compose up` stack |
 | 2A | Real Open-Meteo weather → API → React | ✅ verified live |
-| 2B | Hyperlocal risk engine + 4 roles | ✅ 181 backend tests |
+| 2B | Hyperlocal risk engine + 4 roles | ✅ backend test suite green |
 | 3 | Ollama/local AI + RAG + conversational guidance | ✅ optional & fallback-safe |
 | 4 | SIH safety features (status, alerts, checklists) | ✅ deterministic layer |
 
@@ -103,20 +103,90 @@ npm run dev
 Vite proxies `/api` to `http://localhost:8000` in dev (see
 `vite.config.js`). Production build: `npm run build`.
 
-## Docker setup
+## Docker setup (development)
 
 ```
 docker compose up --build          # db + backend + frontend
 docker compose --profile ai up -d  # also start optional local Ollama
 ```
 
-- `db`: PostgreSQL 16 with a healthcheck; `DATABASE_URL` points the
-  backend at it automatically.
+- `db`: PostgreSQL 16 with PostGIS and a healthcheck; `DATABASE_URL`
+  points the backend at it automatically.
 - `backend`: FastAPI on :8000 (Open-Meteo by default).
-- `frontend`: Vite dev server on :5173.
+- `frontend`: Vite dev server on :5173 (hot reload, bind-mounted source).
 - `ollama` (profile `ai`): local models volume; pull a model once with
   `docker compose exec ollama ollama pull llama3.2` and set
   `AI_PROVIDER=ollama`.
+
+This stack is for development: it runs a Vite dev server and installs
+dependencies at container start. For a real deployment use the production
+stack below.
+
+## Deployment (production)
+
+The production stack builds real images (no dev server, no bind mounts,
+dependencies installed at image build time) and publishes exactly one port.
+
+```
+# 1. create your environment file — the templates hold placeholders only
+cp .env.example .env
+#    …then edit it. Production REQUIRES AUTH_ADMIN_PASSWORD, and you should
+#    set CORS_ORIGINS, DOCS_ENABLED and POSTGRES_* deliberately.
+
+# 2. build the images
+docker compose -f docker-compose.prod.yml build
+
+# 3. start the stack (add --profile ai to include optional local Ollama)
+docker compose -f docker-compose.prod.yml up -d
+```
+
+- **Frontend:** `http://localhost/` — host port `FRONTEND_PORT`, default
+  80. Nginx serves the built SPA and reverse-proxies `/api/` to the
+  backend, so the browser only ever talks to one origin (CORS is not
+  exercised in production).
+- **Backend:** available as `http://backend:8000` **inside** the compose
+  network only — it is deliberately not published. Check it through the
+  container health status, or run the probe directly:
+  `docker compose -f docker-compose.prod.yml exec backend python -c "import urllib.request;print(urllib.request.urlopen('http://127.0.0.1:8000/health').read().decode())"`
+- **Database:** PostgreSQL 16 + PostGIS on the `pgdata` volume, internal
+  only. Tables are created and the admin account is seeded on first start.
+- **Ollama (optional):** internal only. Enable with `--profile ai`, then
+  `docker compose -f docker-compose.prod.yml exec ollama ollama pull llama3.2`
+  and set `AI_PROVIDER=ollama` (or `hybrid`).
+
+Day-to-day operations:
+
+```
+docker compose -f docker-compose.prod.yml ps               # status + health
+docker compose -f docker-compose.prod.yml logs -f          # follow all logs
+docker compose -f docker-compose.prod.yml logs -f backend   # one service
+docker compose -f docker-compose.prod.yml up -d --build    # rebuild + restart
+docker compose -f docker-compose.prod.yml restart backend  # reload code only
+docker compose -f docker-compose.prod.yml down             # stop (keeps volumes)
+docker compose -f docker-compose.prod.yml down -v          # stop AND delete data
+```
+
+Things worth knowing before you expose it:
+
+- The production stack runs under its own compose project
+  (`weathergpt-prod`), so it gets its own `pgdata` volume: deploying never
+  disturbs development data, and the first start initializes a fresh
+  schema.
+- `AUTH_ADMIN_PASSWORD` has **no fallback** — `up` fails fast with a clear
+  message instead of starting with a published default. Seeding is
+  idempotent, so it only creates accounts that do not exist yet.
+- Set `AUTH_DEMO_PASSWORD` (or delete the `demo` account) before public
+  use: it is a known-credential login otherwise.
+- With `ENV=production` the backend logs a `startup.insecure_default`
+  warning naming any variable still on a development default. Variable
+  names only — values are never logged.
+- Env changes need a container recreate (`up -d`, which detects the
+  change), not `restart`: `restart` reuses the existing container's
+  environment.
+- Traffic is plain HTTP on `FRONTEND_PORT`. Put a TLS terminator in front
+  (your own reverse proxy, a load balancer, or a tunnel) for public use.
+- Secrets stay in `.env`, which is gitignored. No secret is baked into an
+  image: the backend image copies only `requirements.txt` and `app/`.
 
 ## Environment variables (backend)
 
@@ -280,7 +350,7 @@ failures return clean 422/502/503 errors with readable messages.
 
 ## Testing
 
-Backend (181 tests; all external HTTP mocked — no live Open-Meteo, AQI,
+Backend (338 tests; all external HTTP mocked — no live Open-Meteo, AQI,
 geocoding or Ollama in CI):
 
 ```
@@ -312,8 +382,10 @@ npm run build     # production build must succeed
 | `python -m pytest -q` | `backend/` | Run backend tests. |
 | `npm run dev` | `frontend/` | Vite dev server (proxies `/api`). |
 | `npm run build` | `frontend/` | Production build. |
-| `docker compose up` | repo root | Full stack (db + api + web). |
+| `npm run lint` | `frontend/` | ESLint over the frontend source. |
+| `docker compose up` | repo root | Development stack (db + api + web). |
 | `docker compose --profile ai up -d` | repo root | Also run Ollama. |
+| `docker compose -f docker-compose.prod.yml up -d --build` | repo root | Production stack (built images, nginx on 80). |
 
 ## Safety limitations (honest scope)
 
@@ -335,8 +407,12 @@ npm run build     # production build must succeed
 ## Known limitations / future improvements
 
 - No frontend unit-test framework yet (backend is comprehensively
-  tested; frontend is verified via production build + live preview).
-- `npm run lint` script references eslint, which is not installed.
+  tested; frontend is verified via `npm run lint`, the production build
+  and live preview).
+- No database migrations yet: the schema is created with SQLAlchemy
+  `create_all` at startup, which adds missing tables but cannot alter
+  existing ones. A future schema change needs Alembic (or a deliberate
+  migration step) before it can ship.
 - Chat history is in-memory per session (DB persistence is scaffolded
   via `ChatMessage`).
 - `SafetyEvent` persistence is schema-ready but not yet written by the

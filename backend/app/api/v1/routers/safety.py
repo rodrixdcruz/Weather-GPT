@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
+from app.api.v1.deps import effective_role, optional_session
 from app.core.logging import get_logger
+from app.models.models import LoginSession
 from app.schemas.schemas import ChecklistItemOut, SafetyAlertOut, SafetyAssessmentOut
 from app.services.safety.engine import SafetyEngine
 from app.services.weather.base import WeatherProviderError
@@ -16,6 +18,7 @@ async def get_safety_assessment(
     longitude: float = Query(..., ge=-180, le=180),
     role: str = Query("customer", description="customer | farmer | traveler | disaster_management_officer"),
     scenario: str = Query("normal", description="Demo-only scenario override (mock provider)"),
+    session: LoginSession | None = Depends(optional_session),
 ):
     """WeatherGPT Safety Status for a location.
 
@@ -33,7 +36,8 @@ async def get_safety_assessment(
         log.warning("safety.provider_error kind=%s", exc.kind)
         raise _provider_http_error(exc) from None
 
-    assessment = await SafetyEngine().assess(reading, role=role)
+    # A signed-in session owns the role (locked at login) — see deps.effective_role.
+    assessment = await SafetyEngine().assess(reading, role=effective_role(role, session))
 
     log.info("safety.assess lat=%.3f lon=%.3f role=%s status=%s alerts=%d", latitude, longitude, assessment.role, assessment.status, len(assessment.alerts))
 

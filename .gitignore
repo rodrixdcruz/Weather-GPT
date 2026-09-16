@@ -1,28 +1,42 @@
+# Secrets — real values stay local. Templates (`.env.example`) ARE tracked:
+# the negations below must therefore come AFTER the ignore patterns.
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+!.env.example
+
 # Dependencies
 node_modules/
-frontend/node_modules/
+**/node_modules/
 
 # Build output
 dist/
-frontend/dist/
 build/
-
-# Secrets — real keys stay local; commit .env.example templates only
-.env
-.env.local
-.env.*.local
-backend/.env
+**/dist/
+**/build/
 
 # Python
 __pycache__/
 *.py[cod]
 .venv/
 venv/
+*.egg-info/
 
-# Freebuff tooling metadata
+# Test / coverage output
+.pytest_cache/
+**/.pytest_cache/
+.coverage
+htmlcov/
+
+# Freebuff tooling metadata (run doc, logs, agent scratch space)
 .freebuff/
+
+# Logs
+*.log
 
 # OS / editor noise
 .DS_Store
 Thumbs.db
-*.log
+.eslintcache

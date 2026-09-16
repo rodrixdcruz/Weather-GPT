@@ -1,0 +1,41 @@
+# Docker build context — root.
+# Applies to any image built with the repository root as context. The compose
+# files build from ./backend and ./frontend, which have their own
+# .dockerignore files; this one keeps a root-context build equally safe.
+
+# Version control and tooling metadata
+.git
+.gitignore
+.freebuff
+.github
+
+# Secrets: real env files never enter an image. Templates are kept.
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+!.env.example
+
+# Dependencies and build output (always reinstalled during the build)
+node_modules
+**/node_modules
+dist
+**/dist
+build
+**/build
+coverage
+htmlcov
+.pytest_cache
+**/.pytest_cache
+__pycache__
+**/__pycache__
+*.py[cod]
+*.egg-info
+.venv
+venv
+
+# OS / editor noise
+*.log
+.DS_Store
+Thumbs.db

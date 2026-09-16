@@ -1,15 +1,23 @@
 import { t } from '../i18n'
 
-const SCENARIOS = [
-  { value: 'normal', label: 'Normal' },
-  { value: 'heavy_rainfall', label: 'Heavy Rainfall' },
-  { value: 'heatwave', label: 'Heatwave' },
-  { value: 'thunderstorm', label: 'Thunderstorm' },
-  { value: 'flood_risk', label: 'Flood Risk' },
-  { value: 'smog', label: 'Smog (Poor AQI)' },
-]
-
-export default function TopBar({ scenario, onScenarioChange, langLabel, onLangClick, onSosClick, language, weather = null }) {
+// The scenario picker (Normal / Heavy Rainfall / …) is deliberately gone:
+// weather is detected from the location and the live provider, so choosing a
+// fake scenario was a demo-only control that contradicted the real data on
+// screen. The app now always reads the `normal` path, which is what live
+// providers (open_meteo) ignore anyway — `scenario` only ever selected a
+// fixed fixture set in the `mock` provider.
+export default function TopBar({
+  langLabel,
+  onLangClick,
+  onSosClick,
+  language,
+  weather = null,
+  session = null,
+  onLogout,
+  onAdminClick,
+}) {
+  const user = session?.user
+  const isAdmin = Boolean(user?.is_admin)
   return (
     <>
       <div className="flex items-center justify-between gap-2.5 px-5 py-3.5 border-b border-border bg-navy-950/70 backdrop-blur sticky top-0 z-50 flex-wrap">
@@ -26,18 +34,6 @@ export default function TopBar({ scenario, onScenarioChange, langLabel, onLangCl
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <select
-            className="bg-navy-800 border border-border text-slate-100 px-3 py-1.5 rounded-full text-xs cursor-pointer"
-            value={scenario}
-            onChange={(e) => onScenarioChange(e.target.value)}
-          >
-            {SCENARIOS.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-
           <button
             className="bg-navy-800 border border-border text-slate-100 px-3 py-1.5 rounded-full text-xs flex items-center gap-1.5 hover:border-sky transition"
             onClick={onLangClick}
@@ -51,6 +47,34 @@ export default function TopBar({ scenario, onScenarioChange, langLabel, onLangCl
           >
             {t(language, 'sos')}
           </button>
+
+          {/* Admin panel is admin-only; the backend enforces it too. */}
+          {isAdmin && (
+            <button
+              className="bg-navy-800 border border-sky/60 text-sky px-3 py-1.5 rounded-full text-xs flex items-center gap-1.5 hover:bg-sky/10 transition"
+              onClick={onAdminClick}
+            >
+              🛠️ {t(language, 'adminPanel')}
+            </button>
+          )}
+
+          {user && (
+            <div className="flex items-center gap-2 pl-2.5 border-l border-border">
+              <div className="text-right leading-tight">
+                <div className="text-[11.5px] font-semibold text-slate-100">{user.display_name || user.username}</div>
+                <div className="text-[10px] text-slate-400">
+                  🔒 {t(language, `role_${session.role}`)}
+                </div>
+              </div>
+              <button
+                className="bg-navy-800 border border-border text-slate-200 px-3 py-1.5 rounded-full text-xs hover:border-sky transition"
+                onClick={onLogout}
+                title={t(language, 'roleLockedNote')}
+              >
+                {t(language, 'logout')}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

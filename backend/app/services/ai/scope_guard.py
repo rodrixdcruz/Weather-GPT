@@ -7,10 +7,15 @@ an Ollama cold-start or a paid Solar call. Everything else — including
 natural-language weather questions that never say the word "weather" —
 must pass through untouched.
 
-Deliberately conservative: ambiguity always resolves to IN_SCOPE because
-a wasted local-model call is cheap, but rejecting a real safety question
-is not. Only the escalation tier costs money, and that trade is checked
-in HybridAIProvider, not here.
+Deliberately conservative about REFUSING: ambiguity always resolves to
+IN_SCOPE because a wasted local-model call is cheap, but rejecting a real
+safety question is not.
+
+Escalation is now FREE (see presets.py), so the cost argument that used to
+keep knowledge questions on the small local model is gone. Questions that
+ask about the phenomenon rather than reporting local conditions are routed
+to the free cloud tier, which actually knows the answer — see
+`_needs_broad_knowledge`.
 """
 import re
 from dataclasses import dataclass, field
@@ -59,9 +64,10 @@ _WEATHER_SCOPE_TERMS = frozenset(
 )
 
 # Phrases that signal a request for general/world knowledge beyond local
-# weather context — these justify Solar escalation on otherwise normal
-# questions. (The guard only escalates when the message is otherwise
-# weather-relevant; off-topic + broad still resolves OUT_OF_SCOPE first.)
+# weather context — these justify escalating an otherwise normal question to
+# the free cloud tier. (The guard only escalates when the message is
+# otherwise weather-relevant; off-topic + broad still resolves OUT_OF_SCOPE
+# first.)
 _BROAD_KNOWLEDGE_PATTERNS = (
     r"compare\s+\w+\s+(with|to|and)\s+\w+",
     r"(national|global|worldwide|international)\s+(weather|news|forecast)",
@@ -72,6 +78,64 @@ _BROAD_KNOWLEDGE_PATTERNS = (
 )
 
 _BROAD_RE = re.compile("|".join(_BROAD_KNOWLEDGE_PATTERNS), re.IGNORECASE)
+
+# Large-scale climate/science topics that can NEVER be answered from the
+# local observation block the model is given. Asking about any of these is a
+# knowledge request by definition, so no other signal is needed.
+#
+# NOTE: this is why bare phrasing patterns were not enough — "Explain what
+# El Nino is and how it changes rainfall" missed every pattern above (the
+# words after "explain" are not the topic), so a small local model answered
+# "my context doesn't include that" instead of the free cloud tier answering
+# the actual question.
+_GENERAL_KNOWLEDGE_CONCEPTS = (
+    "el nino", "elnino", "el niño", "la nina", "la niña",
+    "climate change", "global warming", "greenhouse",
+    "jet stream", "ozone", "carbon emission", "carbon footprint",
+    "weather front", "rain shadow", "urban heat island",
+    "monsoon", "sea level", "deforestation",
+)
+
+# Asking to have something EXPLAINED, DEFINED or COMPARED — rather than
+# reported for the user's own location — is a knowledge request.
+_EXPLANATION_TRIGGERS = (
+    "explain", "describe", "define", "definition", "meaning of",
+    "tell me about", "what is", "what are", "what does", "how does", "how do",
+    "why is", "why does", "why do", "what causes", "what makes", "how come",
+    "compare", "comparison", "difference between",
+    "history of", "historical", "long term", "long-term", "scientific",
+)
+
+# Weather phenomena that are general knowledge ONLY when the user asks about
+# the phenomenon itself. Deliberately excludes anything present in the local
+# observation block (humidity, temperature, rainfall, wind, AQI…): "What is
+# the humidity?" must stay a local question, because the local model has the
+# real number and the cloud tier would only be slower.
+_PHENOMENA = (
+    "cyclone", "hurricane", "typhoon", "tornado", "drought",
+    "lightning", "thunder", "dew point", "air pressure",
+    "formation of", "sea breeze",
+)
+
+
+def _needs_broad_knowledge(text: str) -> bool:
+    """True when only a broader-knowledge model can answer this.
+
+    Ordered cheapest-check-first, and intentionally additive: a question
+    about a named general concept escalates outright, while a question about
+    a weather phenomenon escalates only when it is phrased as a request to
+    explain it ("what causes lightning?" yes, "will there be lightning
+    today?" no — the local risk engine owns that).
+    """
+    lowered = text.lower()
+    if _BROAD_RE.search(lowered):
+        return True
+    if any(concept in lowered for concept in _GENERAL_KNOWLEDGE_CONCEPTS):
+        return True
+    asks_to_explain = any(trigger in lowered for trigger in _EXPLANATION_TRIGGERS)
+    if asks_to_explain and any(phenomenon in lowered for phenomenon in _PHENOMENA):
+        return True
+    return False
 
 # Obvious keyboard-mash / single-token junk.
 _WORD_RE = re.compile(r"[A-Za-z\u0900-\u097F]")
@@ -136,11 +200,11 @@ class ScopeGuard:
         if _is_gibberish(text):
             return ScopeVerdict.OUT_OF_SCOPE
 
-        # Broad-knowledge patterns are weather/climate-adjacent by
+        # Broad-knowledge questions are weather/climate-adjacent by
         # definition, so check them BEFORE the topical whitelist —
         # "Tell me about El Nino" has no weather word yet still belongs
-        # in scope (with escalation to the stronger tier).
-        if _BROAD_RE.search(text):
+        # in scope (with escalation to the free cloud tier).
+        if _needs_broad_knowledge(text):
             return ScopeVerdict.BROAD_KNOWLEDGE
 
         if _topical_score(text) == 0:

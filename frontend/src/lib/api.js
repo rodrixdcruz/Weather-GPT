@@ -4,11 +4,28 @@
 
 const BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
+// The dashboard session token, mirrored here so every request carries it
+// without each call site passing it around. session.js owns the value.
+let authToken = null
+
+export function setAuthToken(token) {
+  authToken = token || null
+}
+
 async function request(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(authToken ? { 'X-Session-Token': authToken } : {}),
+    },
     ...options,
   })
+
+  // An expired or revoked session is a state change the app must react to
+  // (back to the login screen), not just an error string on one panel.
+  if (res.status === 401) {
+    window.dispatchEvent(new CustomEvent('weathergpt:unauthorized'))
+  }
   if (!res.ok) {
     // FastAPI validation errors (422) carry a readable detail[0].msg;
     // other errors carry detail as a string. Surface the friendliest one.
@@ -32,6 +49,22 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  // --- Session / auth ---
+  login: ({ username, password, role }) =>
+    request(`/auth/login`, {
+      method: 'POST',
+      body: JSON.stringify({ username, password, role }),
+    }),
+
+  getSession: () => request(`/auth/session`),
+
+  logout: () => request(`/auth/logout`, { method: 'POST' }),
+
+  // --- Admin panel (admin accounts only) ---
+  getAdminOverview: () => request(`/admin/overview`),
+
+  getAdminSessions: () => request(`/admin/sessions`),
+
   // Weather data
   getCurrentWeather: (latitude, longitude, scenario = 'normal') =>
     request(`/weather/current?latitude=${latitude}&longitude=${longitude}&scenario=${scenario}`),

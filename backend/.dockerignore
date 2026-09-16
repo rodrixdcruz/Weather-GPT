@@ -1,0 +1,32 @@
+# Docker build context — backend.
+# The Dockerfile only copies requirements.txt and app/, so this is belt and
+# braces: it guarantees no secret, cache or local virtualenv can be swept into
+# an image by a future change to that COPY list.
+
+# Secrets: real env files never enter an image. Templates are kept.
+.env
+.env.*
+!.env.example
+
+# Python caches and test output
+__pycache__
+**/__pycache__
+*.py[cod]
+.pytest_cache
+**/.pytest_cache
+.coverage
+htmlcov
+*.egg-info
+
+# Local virtualenvs (the image installs its own dependencies)
+.venv
+venv
+
+# Version control and tooling metadata
+.git
+.gitignore
+
+# OS / editor noise
+*.log
+.DS_Store
+Thumbs.db

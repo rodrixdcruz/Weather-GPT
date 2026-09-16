@@ -1,6 +1,11 @@
-from fastapi import APIRouter, HTTPException
+import time
 
+from fastapi import APIRouter, Depends, HTTPException
+
+from app.api.v1.deps import effective_role, optional_session
 from app.core.logging import get_logger
+from app.models.models import LoginSession
+from app.services.ai.metrics import get_metrics
 from app.schemas.schemas import ChatRequest, ChatResponse
 from app.services.ai.base import ChatTurn, WeatherContext, AIProviderError
 from app.services.ai.factory import get_ai_provider
@@ -58,7 +63,8 @@ def _fallback_reply(message: str, context: WeatherContext, role: str, language: 
 
 
 @router.post("/send", response_model=ChatResponse)
-async def send_chat_message(payload: ChatRequest):
+async def send_chat_message(payload: ChatRequest, session: LoginSession | None = Depends(optional_session)):
+    started = time.perf_counter()
     # 1. Weather context (never fabricated — provider errors surface cleanly).
     provider = get_weather_provider(scenario=payload.scenario)
     try:
@@ -68,8 +74,10 @@ async def send_chat_message(payload: ChatRequest):
 
         raise _provider_http_error(exc) from None
 
-    # 2. Deterministic risk assessment for the requested role.
-    active_role = normalize_role(payload.role)
+    # 2. Deterministic risk assessment for the active role. A signed-in
+    #    session owns the role (it was chosen once at login), so the client
+    #    cannot re-select a role mid-session.
+    active_role = normalize_role(effective_role(payload.role, session))
     assessment = RiskEngine().assess(reading, role=active_role)
     top = assessment.risks[0] if assessment.risks else None
     risk_level = top.severity.value if top else "low"
@@ -103,6 +111,12 @@ async def send_chat_message(payload: ChatRequest):
     #      guard passes a borderline message through.
     if _scope_guard.classify(payload.message) is ScopeVerdict.OUT_OF_SCOPE:
         log.info("chat.scope_guard session=%s out_of_scope", payload.session_id)
+        get_metrics().record_reply(
+            provider="scope_guard",
+            fallback_used=False,
+            role=active_role,
+            latency_ms=(time.perf_counter() - started) * 1000,
+        )
         return ChatResponse(
             reply=_scope_guard.refusal_message(payload.language),
             data_used={},
@@ -169,7 +183,20 @@ async def send_chat_message(payload: ChatRequest):
         del _HISTORY[payload.session_id]
         _HISTORY[payload.session_id] = history[-20:]
 
-    log.info("chat.send session=%s role=%s risk=%s fallback=%s", payload.session_id, active_role, risk_level, fallback_used)
+    latency_ms = (time.perf_counter() - started) * 1000
+    log.info("chat.send session=%s role=%s risk=%s fallback=%s latency_ms=%.0f", payload.session_id, active_role, risk_level, fallback_used, latency_ms)
+
+    # Model observability for the admin panel: who answered, how often we
+    # had to fall back to deterministic data answers, and how slow it was.
+    metrics = get_metrics()
+    metrics.record_reply(
+        provider=answered_by,
+        fallback_used=fallback_used,
+        role=active_role,
+        latency_ms=latency_ms,
+    )
+    if fallback_used and answered_by == "fallback":
+        metrics.record_error(kind="both_tiers_failed", detail="Answered from weather data instead of a model.")
 
     return ChatResponse(
         reply=answer,

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -180,6 +182,33 @@ class SafetyAlertOut(BaseModel):
 class ChecklistItemOut(BaseModel):
     text: str
     category: str
+
+
+class LoginRequest(BaseModel):
+    """Sign-in payload. `role` is the ONE-TIME role choice for the session."""
+
+    username: str
+    password: str
+    # customer | farmer | traveler | disaster_management_officer
+    # Optional: when omitted the account's own default role is used.
+    role: str | None = None
+
+
+class SessionUserOut(BaseModel):
+    username: str
+    display_name: str
+    role: str
+    is_admin: bool
+
+
+class SessionResponse(BaseModel):
+    """A dashboard session. `role` is locked for as long as it lives."""
+
+    token: str
+    role: str
+    created_at: datetime
+    expires_at: datetime
+    user: SessionUserOut
 
 
 class SafetyAssessmentOut(BaseModel):

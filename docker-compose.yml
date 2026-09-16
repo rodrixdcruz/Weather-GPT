@@ -33,12 +33,36 @@ services:
       AI_PROVIDER: ${AI_PROVIDER:-mock}
       OLLAMA_BASE_URL: http://ollama:11434
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
-      # Solar Pro 4 escalation tier (hybrid provider). Key stays in the
-      # root .env — compose passes it ONLY into the backend container.
+      # Escalation tier (hybrid provider) — a FREE OpenAI-compatible
+      # provider. Any key stays in the root .env; compose passes it ONLY
+      # into the backend container, never to the frontend.
+      # "auto" = Groq when a key is set, else the keyless OVHcloud tier.
+      ESCALATION_PROVIDER: ${ESCALATION_PROVIDER:-auto}
+      # Ordered failover chain (comma-separated preset names). Empty = just
+      # ESCALATION_PROVIDER, no failover. "groq,ovhcloud" absorbs 429s.
+      ESCALATION_PROVIDERS: ${ESCALATION_PROVIDERS:-}
+      # Seconds a rate-limited escalation provider sits out before it is
+      # tried again (429s cannot recover sooner, so retrying only adds latency).
+      ESCALATION_COOLDOWN_SECONDS: ${ESCALATION_COOLDOWN_SECONDS:-65}
+      ESCALATION_API_KEY: ${ESCALATION_API_KEY:-}
+      # Per-provider keys as a JSON map, e.g. {"groq":"gsk_...","gemini":"..."}.
+      ESCALATION_API_KEYS: ${ESCALATION_API_KEYS:-}
+      ESCALATION_MODEL: ${ESCALATION_MODEL:-}
+      ESCALATION_BASE_URL: ${ESCALATION_BASE_URL:-}
+      ESCALATION_TIMEOUT_SECONDS: ${ESCALATION_TIMEOUT_SECONDS:-30}
+      # Legacy paid tier (only read when ESCALATION_PROVIDER=solar).
       SOLAR_API_KEY: ${SOLAR_API_KEY:-}
       SOLAR_MODEL: ${SOLAR_MODEL:-solar-pro4}
-      SOLAR_TIMEOUT_SECONDS: ${SOLAR_TIMEOUT_SECONDS:-30}
       RISK_PROFILE: ${RISK_PROFILE:-default}
+      # Dashboard accounts. Seeding is IDEMPOTENT: it creates these usernames
+      # only when they do not already exist, so changing them here does not
+      # change a password that is already in the database.
+      # Override the real values in the root .env — never commit credentials
+      # to this file. The fallbacks below are the public demo defaults.
+      AUTH_ADMIN_USERNAME: ${AUTH_ADMIN_USERNAME:-admin}
+      AUTH_ADMIN_PASSWORD: ${AUTH_ADMIN_PASSWORD:-admin123}
+      AUTH_DEMO_USERNAME: ${AUTH_DEMO_USERNAME:-demo}
+      AUTH_DEMO_PASSWORD: ${AUTH_DEMO_PASSWORD:-demo123}
     volumes:
       - ./backend:/app
     ports:
