@@ -27,11 +27,11 @@ services:
     image: postgis/postgis:16-3.4-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-weathergpt}
-      # Defaults to the development credentials so an existing pgdata volume
-      # keeps working (Postgres only applies POSTGRES_PASSWORD when it first
-      # initializes a volume). Rotate it deliberately: set a new value here AND
-      # run `ALTER USER weathergpt WITH PASSWORD '<new>'` against the database.
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-weathergpt}
+      # REQUIRED — no published default. Postgres only applies this value when
+      # it FIRST initializes a volume; on an existing pgdata volume a new value
+      # needs a matching `ALTER USER weathergpt WITH PASSWORD '<new>'` run
+      # against the database, otherwise the two drift apart.
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the root .env before deploying}"
       POSTGRES_DB: ${POSTGRES_DB:-weathergpt}
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -51,7 +51,7 @@ services:
       context: ./backend
     environment:
       # Database — internal service name, never a public host.
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-weathergpt}:${POSTGRES_PASSWORD:-weathergpt}@db:5432/${POSTGRES_DB:-weathergpt}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-weathergpt}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the root .env before deploying}@db:5432/${POSTGRES_DB:-weathergpt}
 
       # App
       ENV: ${ENV:-production}
@@ -108,9 +108,9 @@ services:
       AUTH_ADMIN_PASSWORD: "${AUTH_ADMIN_PASSWORD:?set AUTH_ADMIN_PASSWORD in the root .env before deploying}"
       AUTH_ADMIN_DISPLAY_NAME: ${AUTH_ADMIN_DISPLAY_NAME:-Operations Admin}
       AUTH_DEMO_USERNAME: ${AUTH_DEMO_USERNAME:-demo}
-      # The demo account is a known-credential login: set a real value here, or
-      # delete the `demo` row, before exposing this to the internet.
-      AUTH_DEMO_PASSWORD: ${AUTH_DEMO_PASSWORD:-demo123}
+      # REQUIRED — a fresh deploy must not silently boot on the published
+      # demo123. This only affects seeding of accounts that do not exist yet.
+      AUTH_DEMO_PASSWORD: "${AUTH_DEMO_PASSWORD:?set AUTH_DEMO_PASSWORD in the root .env before deploying}"
       AUTH_DEMO_DISPLAY_NAME: ${AUTH_DEMO_DISPLAY_NAME:-Demo User}
 
       # SOS: must stay false until a real dispatch service is wired up.
