@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     # CORS_ORIGINS='["https://weathergpt.example.com"]'). When the frontend is
     # served behind the nginx image the SPA calls /api/ on its own origin, so
     # requests are same-origin and CORS is not exercised at all.
-   CORS_ORIGINS: list[str] = [
+    CORS_ORIGINS: list[str] = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "https://weather-gpt-beryl.vercel.app",

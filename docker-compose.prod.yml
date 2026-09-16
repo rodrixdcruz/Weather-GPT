@@ -59,8 +59,7 @@ services:
       # Set this to the real frontend origin for cross-origin use. Behind the
       # nginx image the SPA calls /api/ on its own origin, so CORS is not
       # exercised at all and the default is enough.
-      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost"]}
-      # Interactive API docs are off in production.
+      CORS_ORIGINS: '["http://localhost","https://weather-gpt-beryl.vercel.app","https://weather-gpt-prjkpmxy3-rodrixdcruz.vercel.app"]'      # Interactive API docs are off in production.
       DOCS_ENABLED: ${DOCS_ENABLED:-false}
 
       # Weather + air quality (open_meteo needs no API key)
