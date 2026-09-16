@@ -106,9 +106,15 @@ Vite proxies `/api` to `http://localhost:8000` in dev (see
 ## Docker setup (development)
 
 ```
+cp .env.example .env               # first run only — then edit it
 docker compose up --build          # db + backend + frontend
 docker compose --profile ai up -d  # also start optional local Ollama
 ```
+
+`AUTH_ADMIN_PASSWORD` is **required by both stacks**, development included:
+without it `docker compose up` stops with a clear message instead of starting
+on the published `admin123` default. Everything else in `.env` has a working
+fallback, so the only value you must supply is the admin password.
 
 - `db`: PostgreSQL 16 with PostGIS and a healthcheck; `DATABASE_URL`
   points the backend at it automatically.

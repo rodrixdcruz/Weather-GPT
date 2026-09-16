@@ -57,10 +57,15 @@ services:
       # Dashboard accounts. Seeding is IDEMPOTENT: it creates these usernames
       # only when they do not already exist, so changing them here does not
       # change a password that is already in the database.
-      # Override the real values in the root .env — never commit credentials
-      # to this file. The fallbacks below are the public demo defaults.
+      # Real values live in the root .env (gitignored) — never in this file.
       AUTH_ADMIN_USERNAME: ${AUTH_ADMIN_USERNAME:-admin}
-      AUTH_ADMIN_PASSWORD: ${AUTH_ADMIN_PASSWORD:-admin123}
+      # REQUIRED, in development as well as production: "admin123" is a
+      # published credential, so defaulting to it would hand a working admin
+      # login to anyone who can reach this stack. Set AUTH_ADMIN_PASSWORD in
+      # the root .env (see .env.example) before running `docker compose up`.
+      AUTH_ADMIN_PASSWORD: "${AUTH_ADMIN_PASSWORD:?set AUTH_ADMIN_PASSWORD in the root .env before starting}"
+      # The demo account stays defaulted so a fresh checkout is still demoable.
+      # It is a customer-role login and carries no admin rights.
       AUTH_DEMO_USERNAME: ${AUTH_DEMO_USERNAME:-demo}
       AUTH_DEMO_PASSWORD: ${AUTH_DEMO_PASSWORD:-demo123}
     volumes:
