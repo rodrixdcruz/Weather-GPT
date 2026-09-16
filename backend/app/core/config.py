@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     "http://127.0.0.1:5173",
     "https://weather-gpt-beryl.vercel.app",
     "https://weather-gpt-prjkpmxy3-rodrixdcruz.vercel.app",
+    "https://weather-gpt-k3435ehbw-rodrixdcruz.vercel.app",
 ]
     # Interactive API docs (/docs, /redoc, /openapi.json). Enabled by default so
     # local development keeps them; production sets DOCS_ENABLED=false so the
