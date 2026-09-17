@@ -51,6 +51,20 @@ docker compose up --build
 No API keys needed — weather and risk work out of the box on free
 providers. See below for AI setup and the production stack.
 
+## Screenshots
+
+**Sign in and pick your role once — it stays locked for the session.**
+
+![Login with one-time role selection](docs/screenshots/login.png)
+
+**Live weather, explainable risk, forecast and the 3D presenter avatar.**
+
+![Dashboard with weather, risk and 3D avatar](docs/screenshots/dashboard.png)
+
+**Shelter routing drawn in-app — real road distance and ETA per mode.**
+
+![In-app shelter routing on the map](docs/screenshots/map-routing.jpg)
+
 ## The pipeline
 
 ```
