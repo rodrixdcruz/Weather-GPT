@@ -2,7 +2,42 @@
 // error handling, and response shapes stay in one place. There is
 // deliberately exactly one HTTP client in this app — import { api }.
 
-const BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1'
+// VITE_API_BASE_URL is baked in at BUILD time, so a stale value survives every
+// later fix: a dead tunnel, or an http://localhost:8000 left over from local
+// development, keeps breaking a deployed build until it is rebuilt without it.
+//
+// One case is guarded here. A plain-http base on an https page can NEVER
+// succeed — the browser refuses the request as mixed content before it leaves
+// the page, and the only symptom is "Failed to fetch" with nothing in the
+// network log. Retrying or guessing is not safe (this client posts SOS and chat
+// messages, which must never be duplicated), so the value is simply dropped in
+// favour of the same-origin /api/v1, which the host proxy forwards to backend.
+//
+// Every other configured value is honoured unchanged: silently rewriting a
+// reachable backend URL would hide real misconfiguration.
+const configuredBase = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/+$/, '')
+
+const SAME_ORIGIN_BASE = '/api/v1'
+
+function resolveBase() {
+  if (!configuredBase) return SAME_ORIGIN_BASE
+
+  const pageIsSecure =
+    typeof window !== 'undefined' && window.location.protocol === 'https:'
+  if (pageIsSecure && configuredBase.startsWith('http://')) {
+    console.warn(
+      `[weathergpt] Ignoring VITE_API_BASE_URL (${configuredBase}): an http:// API cannot be ` +
+        `called from this https:// page, so the browser would block every request as mixed ` +
+        `content. Falling back to ${SAME_ORIGIN_BASE}. Remove the variable from the deploy ` +
+        `environment and rebuild, or point it at an https:// backend.`,
+    )
+    return SAME_ORIGIN_BASE
+  }
+
+  return configuredBase
+}
+
+const BASE = resolveBase()
 
 // The dashboard session token, mirrored here so every request carries it
 // without each call site passing it around. session.js owns the value.

@@ -1,0 +1,150 @@
+# Render Blueprint — the whole WeatherGPT stack, running in the cloud.
+#
+# WHY THIS FILE EXISTS
+# 1. A service created by hand in the Render dashboard is easy to point at the
+#    WRONG repository: searching "weathergpt" on GitHub surfaces an unrelated
+#    Next.js ChatGPT-plugin starter (steven-tey/weathergpt). A backend built
+#    from that repo has no /api/v1 routes, so login 404s. A Blueprint can only
+#    exist inside THIS repo, so selecting the Blueprint selects this code.
+# 2. Everything lands in the cloud, so the site keeps working when the laptop is
+#    off. Nothing here talks to localhost, Docker, or an ngrok tunnel.
+#
+# HOW TO DEPLOY
+#   Render dashboard -> New + -> Blueprint -> pick rodrixdcruz/Weather-GPT.
+#   Render reads this file and creates BOTH services below, then prompts for the
+#   secrets marked `sync: false`. Nothing else is needed.
+#
+# THE TWO SERVICES
+#   weathergpt-web  static site  -> the Vite build of frontend/, served over HTTPS
+#   weathergpt-api  web service  -> the FastAPI backend from backend/
+#   Database: Neon (set DATABASE_URL when prompted). Neon is managed and always
+#   on, so the app has no dependency on any local machine.
+#
+# IF RENDER ASSIGNS A DIFFERENT HOSTNAME
+# Render appends a random suffix when a name is taken. If that happens, update
+# the two hostnames referenced below — VITE_API_BASE_URL and CORS_ORIGINS must
+# always name the ACTUAL origins, character for character.
+
+services:
+  # ---------------------------------------------------------------------------
+  # Frontend — static site. Static sites do NOT spin down, so this is always up.
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: weathergpt-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+    # SPA deep links (/login, and any in-app route) must not 404 on refresh.
+    # Build output is checked first, so real assets are still served normally;
+    # this only catches paths with no matching file.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      # Baked into the bundle at BUILD time, so it must be the FINAL public API
+      # URL — never localhost, and never http:// (the site is served over https,
+      # so a plain-http API would be blocked by the browser as mixed content).
+      # The /api/v1 suffix is required: the client appends /auth/login to it.
+      - key: VITE_API_BASE_URL
+        value: https://weathergpt-api.onrender.com/api/v1
+
+  # ---------------------------------------------------------------------------
+  # Backend — FastAPI. Free instances sleep after ~15 min idle, so the first
+  # request after a quiet spell can take ~30-50s to wake. The frontend stays
+  # available either way; /health needs no database, so a wake never fails.
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: weathergpt-api
+    runtime: python
+    plan: free
+    # Ohio (us-east-2) — co-located with the Neon endpoint, which lives in
+    # us-east-2. Saves a cross-country round trip on every query.
+    region: ohio
+    rootDir: backend
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    # $PORT is injected by Render; uvicorn must bind 0.0.0.0 to be reachable.
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    # Render polls this and restarts the service if it stops answering.
+    healthCheckPath: /health
+
+    envVars:
+      # --- Runtime -----------------------------------------------------------
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+
+      # --- Production posture ------------------------------------------------
+      # ENV=production also arms the startup warnings for insecure defaults.
+      - key: ENV
+        value: production
+      # Hides /docs, /redoc and /openapi.json. Route behaviour is unchanged.
+      - key: DOCS_ENABLED
+        value: "false"
+
+      # --- Database ----------------------------------------------------------
+      # Paste the Neon connection string when prompted (it is a secret).
+      # Neon hands out `postgresql://...?sslmode=require`; paste it AS-IS — the
+      # app rewrites the bare scheme to the psycopg v3 driver itself
+      # (app/db/session.py, normalize_database_url).
+      - key: DATABASE_URL
+        sync: false
+      # Creates missing tables and seeds accounts at startup (idempotent).
+      # Safe against existing Neon data: seeding only creates accounts that do
+      # NOT already exist and NEVER resets a stored password.
+      - key: AUTH_AUTO_INIT_DB
+        value: "true"
+
+      # --- Accounts ----------------------------------------------------------
+      # Usernames are not secret and are recorded here; passwords are prompted
+      # for and never committed.
+      #
+      # GOTCHA: if the account row already exists in Neon (e.g. restored from a
+      # dump), changing AUTH_*_PASSWORD here does NOT change that login — the
+      # hash already in the database wins. To change a live password, reset the
+      # row itself, not this variable.
+      - key: AUTH_ADMIN_USERNAME
+        value: rodrix23
+      - key: AUTH_ADMIN_PASSWORD
+        sync: false
+      - key: AUTH_DEMO_USERNAME
+        value: demo
+      - key: AUTH_DEMO_PASSWORD
+        sync: false
+
+      # --- CORS ---------------------------------------------------------------
+      # The static site and the API are different origins, so the browser DOES
+      # exercise CORS here (the login request is a JSON POST, which always
+      # triggers a preflight). The origin below must match the frontend exactly:
+      # scheme + host, no trailing slash.
+      #
+      # The value MUST be a JSON array, in one string. A bare URL or a
+      # comma-separated list makes the app fail to start with a SettingsError —
+      # which then looks like "Failed to fetch" in the browser.
+      - key: CORS_ORIGINS
+        value: '["https://weathergpt-web.onrender.com"]'
+
+      # --- Weather data (key-less Open-Meteo) ---------------------------------
+      - key: WEATHER_PROVIDER
+        value: open_meteo
+      - key: AIR_QUALITY_ENABLED
+        value: "true"
+
+      # --- AI -----------------------------------------------------------------
+      # "hybrid" tries a local Ollama first, then escalates. Ollama does not
+      # exist on a cloud host, so chat goes straight to the cloud tier — the
+      # same behaviour as running locally with Ollama stopped.
+      - key: AI_PROVIDER
+        value: hybrid
+      # "ovhcloud" is free and needs NO API KEY, so chat works with zero extra
+      # signup. To use Groq instead, set ESCALATION_API_KEY (a secret) and
+      # change this to: groq,ovhcloud
+      - key: ESCALATION_PROVIDER
+        value: ovhcloud
+      - key: ESCALATION_COOLDOWN_SECONDS
+        value: "65"
+
+      # --- SOS ----------------------------------------------------------------
+      # Hardwired off: the app must never claim an SOS was sent.
+      - key: SOS_DISPATCH_ENABLED
+        value: "false"

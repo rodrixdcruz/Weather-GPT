@@ -33,6 +33,10 @@ htmlcov/
 # Freebuff tooling metadata (run doc, logs, agent scratch space)
 .freebuff/
 
+# Local database backups — these contain account password hashes, so they must
+# never be committed. Restoring one into Neon is a manual step.
+*.dump
+
 # Logs
 *.log
 
