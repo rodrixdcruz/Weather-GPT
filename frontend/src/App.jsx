@@ -489,7 +489,7 @@ function Dashboard({ session, language, onLanguageChange, onSignOut }) {
           <MapCard center={location} safeZones={safeZones} language={language} />
           <div className="grid grid-cols-1 gap-4">
             <SafetyTips scenario={scenario} language={language} />
-            <SafeZonesList zones={safeZones} language={language} />
+            <SafeZonesList zones={safeZones} origin={location} language={language} />
           </div>
         </div>
           </>

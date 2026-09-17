@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Circle, Popup, useMap } from 'react-leaflet'
 import { t } from '../i18n'
+import { DirectionsLink } from './SidePanels'
 
 // Default view span: zoom 13 ≈ a neighborhood/city-block view.
 const DEFAULT_ZOOM = 13
@@ -20,7 +21,7 @@ function MapAutoCenter({ center, zoom = DEFAULT_ZOOM }) {
 }
 
 /**
- * Leaflet's absolutely-positioned pane divs use high z-indexes (up to 1000)
+ * Leaflet's absolutely-positioned panes use high z-indexes (up to 1000)
  * that paint over sibling cards in the surrounding CSS grid. Applying
  * `isolation: isolate` to the map container creates a local stacking
  * context, so Leaflet's z-indexes compete only inside this card.
@@ -91,7 +92,19 @@ export default function MapCard({ center, safeZones = [], language }) {
             pathOptions={{ color: z.is_verified ? '#22c55e' : '#eab308', fillOpacity: 0.8 }}
           >
             <Popup>
-              {z.name} · {z.distance_km} km · {z.is_verified ? t(language, 'verified') : t(language, 'estimate')}
+              <div className="min-w-[180px] font-sans">
+                <div className="font-semibold text-[13px] text-slate-100">{z.name}</div>
+                <div className="text-[11px] text-slate-300 mb-1.5">
+                  {z.distance_km} km · {z.is_verified ? t(language, 'verified') : t(language, 'estimate')}
+                </div>
+                <DirectionsLink
+                  from={center}
+                  to={z}
+                  name={z.name}
+                  language={language}
+                  className="inline-block text-[11px] font-semibold px-2.5 py-1 rounded bg-sky/15 text-sky border border-sky/40 hover:bg-sky/25 transition-colors"
+                />
+              </div>
             </Popup>
           </CircleMarker>
         ))}

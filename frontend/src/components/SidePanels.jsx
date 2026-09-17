@@ -43,7 +43,36 @@ export function SafetyTips({ scenario, language = 'en' }) {
   )
 }
 
-export function SafeZonesList({ zones = [], language = 'en' }) {
+/**
+ * Opens a ready-made navigation route from the user's live position to a
+ * shelter. Uses Google Maps' universal dir URL — no API key, and on phones
+ * it hands off to the installed Maps app with turn-by-turn navigation.
+ */
+export function DirectionsLink({ from, to, name, language = 'en', className }) {
+  if (
+    !from || !Number.isFinite(from.latitude) || !Number.isFinite(from.longitude) ||
+    !to || !Number.isFinite(to.latitude) || !Number.isFinite(to.longitude)
+  ) return null
+  const fmt = (v) => v.toFixed(6)
+  const url =
+    `https://www.google.com/maps/dir/?api=1` +
+    `&origin=${fmt(from.latitude)},${fmt(from.longitude)}` +
+    `&destination=${fmt(to.latitude)},${fmt(to.longitude)}` +
+    `&travelmode=driving`
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={`${t(language, 'directionsAria')} ${name}`}
+      className={className}
+    >
+      ➤ {t(language, 'directions')}
+    </a>
+  )
+}
+
+export function SafeZonesList({ zones = [], origin = null, language = 'en' }) {
   return (
     <div className="bg-gradient-to-b from-navy-900 to-navy-800 border border-border rounded-2xl p-4">
       <div className="text-[11.5px] uppercase tracking-wide text-slate-300 font-semibold mb-2">
@@ -51,20 +80,29 @@ export function SafeZonesList({ zones = [], language = 'en' }) {
       </div>
       <div className="flex flex-col gap-2">
         {zones.map((z) => (
-          <div key={z.name} className="flex items-center justify-between bg-navy-700 rounded-lg px-3 py-2">
-            <div>
-              <div className="text-[13px]">{z.name}</div>
+          <div key={z.name} className="flex items-center justify-between gap-2 bg-navy-700 rounded-lg px-3 py-2">
+            <div className="min-w-0">
+              <div className="text-[13px] truncate">{z.name}</div>
               <div className="text-[10.5px] text-slate-300">{z.distance_km} {t(language, 'km')}</div>
             </div>
-            <span
-              className={`text-[9.5px] px-2 py-0.5 rounded border ${
-                z.is_verified
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                  : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
-              }`}
-            >
-              {z.is_verified ? t(language, 'verified') : t(language, 'estimate')}
-            </span>
+            <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+              <span
+                className={`text-[9.5px] px-2 py-0.5 rounded border ${
+                  z.is_verified
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                    : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
+                }`}
+              >
+                {z.is_verified ? t(language, 'verified') : t(language, 'estimate')}
+              </span>
+              <DirectionsLink
+                from={origin}
+                to={z}
+                name={z.name}
+                language={language}
+                className="text-[10.5px] font-semibold px-2.5 py-1 rounded bg-sky/15 text-sky border border-sky/40 hover:bg-sky/25 transition-colors whitespace-nowrap"
+              />
+            </div>
           </div>
         ))}
       </div>
