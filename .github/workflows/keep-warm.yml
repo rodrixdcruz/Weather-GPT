@@ -27,7 +27,7 @@ jobs:
         run: |
           # /health deliberately never touches the database, so warming the API
           # does not hold a Neon connection open.
-          URL="https://weathergpt-api.onrender.com/health"
+          URL="https://weather-gpt-1-ze0n.onrender.com/health"
           code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 "$URL" || echo 000)
           echo "$URL -> $code"
           if [ "$code" = "200" ]; then

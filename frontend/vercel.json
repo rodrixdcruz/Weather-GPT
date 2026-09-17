@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://weathergpt-api.onrender.com/api/:path*"
+      "destination": "https://weather-gpt-1-ze0n.onrender.com/api/:path*"
     },
     {
       "source": "/(.*)",
