@@ -9,6 +9,7 @@ upstream fields surface as WeatherProviderError (malformed_response), and
 upstream failures surface as WeatherProviderError with a safe detail
 message; nothing is silently swallowed.
 """
+import asyncio
 import logging
 from typing import Any
 
@@ -162,6 +163,9 @@ class OpenMeteoWeatherProvider(WeatherProvider):
         }
 
     async def _fetch(self, params: dict[str, Any]) -> dict[str, Any]:
+        return await self._fetch_once(params, allow_retry=True)
+
+    async def _fetch_once(self, params: dict[str, Any], *, allow_retry: bool) -> dict[str, Any]:
         try:
             async with httpx.AsyncClient(timeout=self._timeout_seconds, transport=self._transport) as client:
                 response = await client.get(self._base_url, params=params)
@@ -171,6 +175,15 @@ class OpenMeteoWeatherProvider(WeatherProvider):
         except httpx.HTTPError as exc:
             log.warning("open_meteo.connection_error url=%s error=%s", self._base_url, type(exc).__name__)
             raise WeatherProviderError("upstream_unavailable", "Could not reach the weather service. Check connectivity and try again.") from exc
+
+        if response.status_code == 429 and allow_retry:
+            # Key-less APIs rate-limit shared cloud egress IPs. One short,
+            # jittered retry absorbs the burst case; persistent limiting is
+            # handled upstream by the resilience layer (cache/stale/fixture).
+            delay = 1.5
+            log.info("open_meteo.rate_limited retry_in=%.1fs", delay)
+            await asyncio.sleep(delay)
+            return await self._fetch_once(params, allow_retry=False)
 
         if response.status_code == 400:
             # Open-Meteo rejects out-of-range coordinates with 400; treat

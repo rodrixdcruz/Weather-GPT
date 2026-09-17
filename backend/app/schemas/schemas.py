@@ -34,6 +34,9 @@ class WeatherResponse(BaseModel):
     wind_kph: float
     source: str
     is_verified: bool
+    # True when a cached (older) reading was served because the live
+    # provider was unreachable. Data provenance stays in source/is_verified.
+    degraded: bool = False
     # Optional enriched fields (None when the provider doesn't supply them).
     apparent_temperature_c: float | None = None
     wind_direction_deg: float | None = None

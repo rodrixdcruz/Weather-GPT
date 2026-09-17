@@ -64,7 +64,11 @@ class TestFactory:
         get_settings.cache_clear()
         try:
             provider = get_weather_provider()
-            assert type(provider).__name__ == "OpenMeteoWeatherProvider"
+            # The live provider ships wrapped in the resilience layer
+            # (cache/coalescing/graceful degradation); assert the inner type.
+            inner = getattr(provider, "_inner", provider)
+            assert type(inner).__name__ == "OpenMeteoWeatherProvider"
+            assert type(provider).__name__ == "ResilientWeatherProvider"
         finally:
             get_settings.cache_clear()
             monkeypatch.delenv("WEATHER_PROVIDER", raising=False)

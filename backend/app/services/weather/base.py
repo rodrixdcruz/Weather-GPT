@@ -52,6 +52,11 @@ class WeatherReading:
     # Optional air-quality enrichment (None = not fetched / not available).
     # Attached only by enrich_with_air_quality(); never fabricated.
     air_quality: "AirQuality | None" = None
+    # Degraded provenance: True when a live provider could not be reached
+    # and a cached reading was served instead. The data itself was REAL
+    # (is_verified stays as the original provider set it) but older than
+    # the fresh window — the UI should say so rather than imply live data.
+    degraded: bool = False
 
 
 @dataclass

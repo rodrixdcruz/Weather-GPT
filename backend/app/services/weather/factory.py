@@ -14,6 +14,7 @@ def get_weather_provider(scenario: str = "normal") -> WeatherProvider:
         return MockWeatherProvider(scenario=scenario)
     if provider == "open_meteo":
         from app.services.weather.open_meteo_provider import OpenMeteoWeatherProvider
+        from app.services.weather.resilient import ResilientWeatherProvider
 
         provider_impl = OpenMeteoWeatherProvider()
         if settings.AIR_QUALITY_ENABLED:
@@ -27,6 +28,10 @@ def get_weather_provider(scenario: str = "normal") -> WeatherProvider:
                 return await attach_air_quality(reading, aqi_provider)
 
             provider_impl.get_current = get_current_with_aqi  # type: ignore[method-assign]
-        return provider_impl
+        # Shared egress IPs on cloud platforms hit key-less API rate limits
+        # (observed: Open-Meteo 429s Render's egress pool). Wrap with
+        # caching/coalescing/stale-serve so upstream trouble degrades to
+        # clearly-labeled cached or fixture data instead of a 502.
+        return ResilientWeatherProvider(provider_impl)
 
     raise ValueError(f"Unknown WEATHER_PROVIDER '{provider}'. Add a provider in services/weather/.")
