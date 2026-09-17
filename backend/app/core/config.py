@@ -107,7 +107,10 @@ class Settings(BaseSettings):
 
     # --- Weather data provider abstraction ---
     # "mock" ships fixture data for demo/offline use; "open_meteo" uses the
-    # free, key-less Open-Meteo API for real observations and forecasts.
+    # free, key-less Open-Meteo API for real observations and forecasts;
+    # "met_norway" uses MET Norway's free, key-less Locationforecast API —
+    # preferred on cloud platforms because Open-Meteo blocks shared cloud
+    # egress IPs (observed 429 on Render) while MET Norway does not.
     WEATHER_PROVIDER: str = "mock"
     WEATHER_API_KEY: str | None = None  # unused by open_meteo (key-less); kept for future providers
     WEATHER_API_BASE_URL: str | None = None  # override the Open-Meteo endpoint (e.g. a self-hosted mirror)
