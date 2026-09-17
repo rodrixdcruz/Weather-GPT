@@ -1,12 +1,55 @@
 # WeatherGPT — SIH26068
 
-Hyperlocal weather intelligence and safety platform. Real weather data
-comes from the free, key-less [Open-Meteo](https://open-meteo.com)
-service; a deterministic risk engine turns it into plain, actionable
-guidance for four audiences; an optional local AI (Ollama + RAG) answers
-natural-language questions grounded strictly in that data; and a safety
-layer surfaces status, alerts and checklists. The core weather + risk +
-safety stack works entirely without any AI service or paid API.
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Backend](https://img.shields.io/badge/backend-FastAPI-009688)
+![Frontend](https://img.shields.io/badge/frontend-React%20%2B%20Vite-61dafb)
+![Tests](https://img.shields.io/badge/tests-338%20passing-brightgreen)
+
+**Hyperlocal weather intelligence and disaster decision support.**
+
+Real weather data comes from free, key-less services (Open-Meteo, MET
+Norway); a deterministic risk engine turns it into plain, actionable
+guidance for four audiences; an optional AI tier (local Ollama, free
+cloud escalation, or any OpenAI-compatible API) answers natural-language
+questions grounded strictly in that data; and a safety layer surfaces
+status, alerts and checklists. The core weather + risk + safety stack
+works entirely without any AI service or paid API.
+
+**Live deployment:** [weathergpt-web.onrender.com](https://weathergpt-web.onrender.com)
+(free tier — the first request after ~15 min idle may take ~30 s to wake the API).
+
+## Highlights
+
+- **Real weather, zero keys** — Open-Meteo and MET Norway providers, both
+  free and key-less; a resilience layer adds caching, request coalescing,
+  stale-serve and honest labeled-fixture fallback so upstream trouble
+  never 500s the API.
+- **Explainable risk engine** — 9 detectors (rainfall, heat, wind, flood
+  potential, air quality…) with IMD/Beaufort/AQI thresholds, 0–100 scores,
+  and role-specific guidance; the UI never shows a number it can't explain.
+- **Grounded AI chat** — scope guard → local Ollama → free cloud
+  escalation chain → data-based fallback. Every reply cites its sources
+  and names the tier that answered; the model can't invent measurements.
+- **Shelter finder with real routing** — nearby safe zones on a Leaflet
+  map, walking/driving toggle, and in-app road routing (OSRM) with a
+  turn-by-turn handoff to Google Maps.
+- **3D presenter avatar** — drag-to-rotate WebGL assistant that reacts to
+  risk changes and holds a prop matching the current weather.
+- **Login with session-locked roles** — pick customer / farmer / traveler /
+  officer once at sign-in; the backend enforces it for the session.
+- **Trilingual UI** — English, हिन्दी, मराठी across the whole page,
+  including voice input.
+
+## Quick start (Docker)
+
+```bash
+cp .env.example .env     # then set AUTH_ADMIN_PASSWORD (required)
+docker compose up --build
+# dashboard: http://localhost:5173  ·  API: http://localhost:8000/health
+```
+
+No API keys needed — weather and risk work out of the box on free
+providers. See below for AI setup and the production stack.
 
 ## The pipeline
 
@@ -39,7 +82,11 @@ USER → LOCATION (typed coords, device geolocation, or place-name search)
 ```
 WeatherProvider (WEATHER_PROVIDER env var)
 ├── MockWeatherProvider        demo scenarios, is_verified=false
-└── OpenMeteoWeatherProvider   free live data, is_verified=true
+├── OpenMeteoWeatherProvider   free live data, key-less
+└── MetNorwayWeatherProvider   free live data, key-less, cloud-egress-friendly
+        │  every live provider is wrapped in ResilientWeatherProvider:
+        │  response cache · request coalescing · 429 retry · stale-serve
+        │  · labeled-fixture fallback (upstream trouble never 500s)
         │  + OpenMeteoAirQualityProvider (key-less US-AQI enrichment,
         │    failure-tolerant — AQI problems never break weather)
         │  normalizes into
@@ -198,14 +245,15 @@ Things worth knowing before you expose it:
 
 | Variable | Values | Purpose |
 | --- | --- | --- |
-| `WEATHER_PROVIDER` | `mock` \| `open_meteo` | Weather data source. `open_meteo` needs no API key. |
+| `WEATHER_PROVIDER` | `mock` \| `open_meteo` \| `met_norway` | Weather data source. Both live providers are free and key-less; `met_norway` is the choice for cloud deployments (Open-Meteo blocks shared cloud egress IPs). |
 | `WEATHER_API_BASE_URL` | URL (optional) | Override the Open-Meteo endpoint. |
 | `AIR_QUALITY_ENABLED` | bool | Key-less US-AQI enrichment for `open_meteo` (failure-tolerant). |
 | `RISK_PROFILE` | profile name | Selects `app/services/risk/profiles/<name>.json`. |
-| `AI_PROVIDER` | `mock` \| `ollama` \| `hybrid` \| `openai` | Chat brain. Mock is rule-based and always available. `hybrid` = Ollama first, Solar escalation. |
-| `SOLAR_API_KEY` | secret (optional) | Solar Pro 4 escalation key (Upstage). **Backend-only** — never expose to the frontend or Git. |
-| `SOLAR_MODEL` | model tag | Solar model, default `solar-pro4`. |
-| `SOLAR_TIMEOUT_SECONDS` | seconds | Escalation-tier timeout (default 30). |
+| `AI_PROVIDER` | `mock` \| `ollama` \| `hybrid` \| `openai` | Chat brain. Mock is rule-based and always available. `hybrid` = Ollama first, then the escalation chain. |
+| `ESCALATION_PROVIDER` | `auto` \| `ovhcloud` \| `groq` \| `solar` \| `openai` | Cloud fallback tier. `auto` picks a working free default; `solar` reads `SOLAR_API_KEY` for backward compat. |
+| `ESCALATION_PROVIDERS` | comma list | Optional ordered failover chain, e.g. `groq,ovhcloud`. Rate-limited providers are skipped temporarily. |
+| `AI_API_KEY` | secret (optional) | Key for the selected escalation provider. **Backend-only** — never expose to the frontend or Git. |
+| `SOLAR_API_KEY` | secret (optional) | Legacy Solar (Upstage) key; still honored when `ESCALATION_PROVIDER=solar`. |
 | `OLLAMA_BASE_URL` | URL | Local Ollama server (default `http://localhost:11434`). |
 | `OLLAMA_MODEL` | model tag | e.g. `llama3.2`, `mistral`, `qwen2.5`. |
 | `RAG_ENABLED` / `RAG_TOP_K` | bool / int | Local retrieval over the curated knowledge base. |
@@ -242,26 +290,30 @@ deterministic, role-aware summary of the real weather/risk data and
 `fallback_used: true` so the UI can label it. AI failure never affects
 weather, risk or safety endpoints.
 
-## Hybrid AI setup (Ollama first, Solar Pro 4 escalation)
+## AI escalation chain (Ollama first, free cloud fallback)
 
 `AI_PROVIDER=hybrid` routes every question through the local model
-first and escalates to the Solar Pro 4 API only when needed:
+first and escalates to a cloud tier only when needed:
 
 1. **Scope guard** — obvious nonsense/off-topic input is refused
    without any AI call (free, instant, localized).
 2. **Local Ollama** (free) answers normal weather/safety questions.
-3. **Solar Pro 4** answers only when Ollama is unavailable/times out,
-   or the question needs broader general knowledge.
-4. **Data-based guidance** (existing fallback) only when BOTH tiers
+3. **Escalation chain** — `ESCALATION_PROVIDER` (default `auto`) or an
+   ordered failover list in `ESCALATION_PROVIDERS`. Free keyless tiers
+   (e.g. `ovhcloud`) work out of the box; keyed tiers (`groq`, `solar`,
+   any OpenAI-compatible endpoint via `AI_API_KEY`) plug in with one
+   env var. A provider that rate-limits is skipped temporarily.
+4. **Data-based guidance** (existing fallback) only when ALL tiers
    fail — `fallback_used: true`.
 
-Each response carries `provider` (`ollama` \| `solar` \| `scope_guard`
-\| `mock` \| `fallback`) so you can see which tier answered.
+Each response carries `provider` (`ollama` \| `ovhcloud` \| `groq` \|
+`solar` \| `scope_guard` \| `mock` \| `fallback`) so you can see which
+tier answered, and the admin panel exposes live AI metrics (requests,
+fallbacks, latency per tier).
 
-To enable: put `SOLAR_API_KEY=...` in your root `.env` (stays
-backend-only; compose passes it into the backend container only), set
-`AI_PROVIDER=hybrid`, and start the Ollama profile
-(`docker compose --profile ai up -d`).
+To enable: set `AI_PROVIDER=hybrid` and start the Ollama profile
+(`docker compose --profile ai up -d`). Cloud escalation works keylessly
+by default; add a key only if you want a specific provider.
 
 ## RAG setup
 
@@ -306,8 +358,9 @@ per `role_priorities` and swaps guidance — never the measurements.
 - **Disaster Management Officer** — severe weather, flood potential,
   monitoring/escalation guidance.
 
-The role is a query/body parameter (`role=`) on `/risk`, `/safety` and
-`/chat`, chosen in the UI (persisted in `localStorage`).
+The role is chosen once on the login screen and locked onto the server
+session — changing it requires logging out, and every API request is
+authorized and role-resolved from the session token (not from the client).
 
 ## AI safety / hallucination control
 
@@ -347,7 +400,7 @@ context, detected risks, and retrieved knowledge titles/content.
 | `GET /api/v1/risk?latitude=&longitude=&role=` | Full role-aware assessment. |
 | `GET /api/v1/safety?latitude=&longitude=&role=` | WeatherGPT Safety Status + alerts + checklist. |
 | `POST /api/v1/chat/send` | Grounded chat: weather + risks + RAG + AI (or fallback). Returns `fallback_used`, `sources`, weather and risk context. |
-| `GET /api/v1/safe-zones/nearby?latitude=&longitude=` | Fixture shelters (placeholder registry). |
+| `GET /api/v1/safe-zones/nearby?latitude=&longitude=` | Fixture shelters (placeholder registry). The frontend adds walking/driving in-map routing via the key-less FOSSGIS OSRM service. |
 | `POST /api/v1/sos/trigger` | Logs an SOS event; never reports dispatch unless truly enabled. |
 | `GET /health` | Liveness + app info. |
 
@@ -427,3 +480,22 @@ npm run build     # production build must succeed
   foundation is in place for them.
 - Future: real IMD/NDMA alert provider, user accounts, push alerts,
   multilingual AI replies beyond the existing UI i18n.
+
+## Login & accounts
+
+The dashboard is gated by a session login; the role chosen at sign-in is
+locked server-side for the session (log out to change it). Accounts are
+seeded idempotently at first start:
+
+- **Admin** — `AUTH_ADMIN_USERNAME` / `AUTH_ADMIN_PASSWORD` (required to
+  set; no default is published). Unlocks the admin panel: AI-provider
+  metrics, escalation-chain status, and system configuration view.
+- **Demo** — `AUTH_DEMO_USERNAME` / `AUTH_DEMO_PASSWORD`. Change or
+  disable it before any public exposure; it is a known credential.
+
+Sessions are stateless tokens (`X-Session-Token`, TTL
+`AUTH_SESSION_TTL_HOURS`, default 12).
+
+## License
+
+Released under the [MIT License](LICENSE).
