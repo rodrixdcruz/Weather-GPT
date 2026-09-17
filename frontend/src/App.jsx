@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import TopBar from './components/TopBar'
 import AlertBanner from './components/AlertBanner'
 import WeatherCard from './components/WeatherCard'
@@ -85,6 +85,22 @@ function Dashboard({ session, language, onLanguageChange, onSignOut }) {
   const [assessment, setAssessment] = useState(null)
   const [forecast, setForecast] = useState(null)
   const [safeZones, setSafeZones] = useState([])
+  // Travel mode for shelter directions — one choice shared by the map and
+  // the shelter list, so toggling in either place updates both.
+  const [travelMode, setTravelMode] = useState('driving')
+  // Active shelter route ({ to, name } | null) drawn in-app on the map;
+  // shared so both the list rows and map popups can open/close it.
+  const [activeRoute, setActiveRoute] = useState(null)
+  // Accepts both call shapes: (shelter, name) from the list and
+  // ({ to, name } | null) from the map's close button.
+  const showDirections = useCallback((targetOrReq, name) => {
+    if (!targetOrReq) {
+      setActiveRoute(null)
+      return
+    }
+    const to = targetOrReq.to ?? targetOrReq
+    setActiveRoute({ to, name: targetOrReq.name ?? name })
+  }, [])
 
   const [weatherLoading, setWeatherLoading] = useState(true)
   const [weatherError, setWeatherError] = useState(null)
@@ -486,10 +502,25 @@ function Dashboard({ session, language, onLanguageChange, onSignOut }) {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_.8fr] gap-4">
-          <MapCard center={location} safeZones={safeZones} language={language} />
+          <MapCard
+            center={location}
+            safeZones={safeZones}
+            travelMode={travelMode}
+            onTravelModeChange={setTravelMode}
+            activeRoute={activeRoute}
+            onDirections={showDirections}
+            language={language}
+          />
           <div className="grid grid-cols-1 gap-4">
             <SafetyTips scenario={scenario} language={language} />
-            <SafeZonesList zones={safeZones} origin={location} language={language} />
+            <SafeZonesList
+              zones={safeZones}
+              origin={location}
+              travelMode={travelMode}
+              onTravelModeChange={setTravelMode}
+              onDirections={showDirections}
+              language={language}
+            />
           </div>
         </div>
           </>

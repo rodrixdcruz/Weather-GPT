@@ -43,40 +43,100 @@ export function SafetyTips({ scenario, language = 'en' }) {
   )
 }
 
+const TRAVEL_MODES = ['walking', 'driving']
+
+/**
+ * Walking/driving segmented control for the shelter directions. One shared
+ * instance per surface (list header, map overlay) so the choice follows the
+ * user across both — in an emergency most shelters are reached on foot.
+ */
+export function TravelModeToggle({ mode = 'driving', onChange, language = 'en' }) {
+  return (
+    <div
+      role="group"
+      aria-label={t(language, 'travelMode')}
+      className="inline-flex items-center bg-navy-950/85 border border-border rounded-full p-0.5 divide-x divide-border"
+    >
+      {TRAVEL_MODES.map((m) => (
+        <button
+          key={m}
+          type="button"
+          onClick={() => onChange?.(m)}
+          aria-pressed={mode === m}
+          className={`px-2.5 py-1 text-[10.5px] font-semibold rounded-full transition-colors ${
+            mode === m ? 'bg-sky/25 text-sky' : 'text-slate-300 hover:text-slate-100'
+          }`}
+        >
+          {m === 'walking' ? '🚶 ' : '🚗 '}
+          {t(language, m)}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * Builds Google Maps' universal dir URL — the turn-by-turn handoff used by
+ * DirectionsLink. Kept separate so the in-app route panel can offer the same
+ * deep link without duplicating the format (6-decimal coords, ~11 cm).
+ */
+export function mapsDirectionsUrl(from, to, mode = 'driving') {
+  const fmt = (v) => Number(v).toFixed(6)
+  const travelmode = mode === 'walking' ? 'walking' : 'driving'
+  return (
+    `https://www.google.com/maps/dir/?api=1` +
+    `&origin=${fmt(from.latitude)},${fmt(from.longitude)}` +
+    `&destination=${fmt(to.latitude)},${fmt(to.longitude)}` +
+    `&travelmode=${travelmode}`
+  )
+}
+
 /**
  * Opens a ready-made navigation route from the user's live position to a
  * shelter. Uses Google Maps' universal dir URL — no API key, and on phones
  * it hands off to the installed Maps app with turn-by-turn navigation.
+ * `mode` is 'driving' (default) or 'walking'; anything else falls back to
+ * driving so a stray value can never produce a broken Maps URL.
  */
-export function DirectionsLink({ from, to, name, language = 'en', className }) {
+export function DirectionsLink({ from, to, name, mode = 'driving', language = 'en', className, onDirections }) {
   if (
     !from || !Number.isFinite(from.latitude) || !Number.isFinite(from.longitude) ||
     !to || !Number.isFinite(to.latitude) || !Number.isFinite(to.longitude)
   ) return null
-  const fmt = (v) => v.toFixed(6)
-  const url =
-    `https://www.google.com/maps/dir/?api=1` +
-    `&origin=${fmt(from.latitude)},${fmt(from.longitude)}` +
-    `&destination=${fmt(to.latitude)},${fmt(to.longitude)}` +
-    `&travelmode=driving`
-  return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      title={`${t(language, 'directionsAria')} ${name}`}
-      className={className}
-    >
+  const content = (
+    <>
       ➤ {t(language, 'directions')}
+    </>
+  )
+  // With `onDirections` the click opens the route inside the app's map; the
+  // Google Maps handoff stays available via the browser context menu.
+  if (onDirections) {
+    return (
+      <button
+        type="button"
+        title={`${t(language, 'directionsAria')} ${name}`}
+        onClick={() => onDirections(to, name)}
+        className={className}
+      >
+        {content}
+      </button>
+    )
+  }
+  return (
+    <a href={mapsDirectionsUrl(from, to, mode)} target="_blank" rel="noopener noreferrer" title={`${t(language, 'directionsAria')} ${name}`} className={className}>
+      {content}
     </a>
   )
 }
 
-export function SafeZonesList({ zones = [], origin = null, language = 'en' }) {
+export function SafeZonesList({ zones = [], origin = null, travelMode = 'driving', onTravelModeChange, onDirections, language = 'en' }) {
   return (
     <div className="bg-gradient-to-b from-navy-900 to-navy-800 border border-border rounded-2xl p-4">
-      <div className="text-[11.5px] uppercase tracking-wide text-slate-300 font-semibold mb-2">
-        {t(language, 'verifiedShelters')}
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="text-[11.5px] uppercase tracking-wide text-slate-300 font-semibold">
+          {t(language, 'verifiedShelters')}
+        </div>
+        <TravelModeToggle mode={travelMode} onChange={onTravelModeChange} language={language} />
       </div>
       <div className="flex flex-col gap-2">
         {zones.map((z) => (
@@ -99,7 +159,9 @@ export function SafeZonesList({ zones = [], origin = null, language = 'en' }) {
                 from={origin}
                 to={z}
                 name={z.name}
+                mode={travelMode}
                 language={language}
+                onDirections={onDirections}
                 className="text-[10.5px] font-semibold px-2.5 py-1 rounded bg-sky/15 text-sky border border-sky/40 hover:bg-sky/25 transition-colors whitespace-nowrap"
               />
             </div>
