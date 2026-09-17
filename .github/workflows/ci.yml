@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend tests (Python 3.11)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11" # matches backend/Dockerfile
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # The suite is hermetic: all external HTTP (Open-Meteo, AQI, geocoding,
+      # Ollama) is mocked, and the code-default settings are what the tests
+      # expect (test_db_url.py asserts the psycopg default). No service
+      # containers or env overrides needed — 362 tests, ~6s.
+      - name: Run tests
+        run: python -m pytest -q
+
+  frontend:
+    name: Frontend lint + build (Node 22)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22" # matches frontend/Dockerfile
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # Also acts as a Render-deploy smoke check: Render builds this same
+      # command on push, so a build failure shows up here first.
+      - name: Production build
+        run: npm run build
