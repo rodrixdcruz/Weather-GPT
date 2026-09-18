@@ -7,9 +7,10 @@ name: Keep backend awake
 # This runs on GitHub's infrastructure, never on a local machine — that is the
 # whole point: the deployment must stay reachable with the laptop switched off.
 #
-# Free-tier note: one always-on service consumes ~744 of the 750 instance hours
-# Render gives free each month, so this fits. If the plan changes, this workflow
-# is the first thing to delete.
+# Free-tier note: each always-on service consumes ~744 of the 750 instance
+# hours Render gives free each month, so TWO always-warm services exceed the
+# budget (~1488h needed). Accepted knowingly; if services start getting
+# suspended mid-month, drop one of the URLs below (or one pinger) first.
 
 on:
   schedule:
@@ -22,17 +23,26 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping the API health route
+      - name: Ping API health routes
         continue-on-error: true
         run: |
-          # /health deliberately never touches the database, so warming the API
+          # /health deliberately never touches the database, so warming the APIs
           # does not hold a Neon connection open.
-          URL="https://weather-gpt-1-ze0n.onrender.com/health"
-          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 "$URL" || echo 000)
-          echo "$URL -> $code"
-          if [ "$code" = "200" ]; then
-            echo "Warm."
-          else
-            # Not a failure while the service is still being set up.
-            echo "::warning::$URL returned $code (is the Render service live yet?)"
-          fi
+          #
+          # This workflow also warms kisanprofit's backend: its own keep-warm
+          # workflow uses the same cron mechanism, but GitHub drops scheduled
+          # runs under load and its runs were arriving hours late (observed
+          # 2026-09-19: 3h+ gaps). Doubling up here is the documented fix.
+          for URL in \
+            "https://weather-gpt-1-ze0n.onrender.com/health" \
+            "https://kisanprofit-api.onrender.com/health" \
+          ; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 "$URL" || echo 000)
+            echo "$URL -> $code"
+            if [ "$code" = "200" ]; then
+              echo "Warm: $URL"
+            else
+              # Not a failure while the service is still being set up.
+              echo "::warning::$URL returned $code (is the Render service live yet?)"
+            fi
+          done
