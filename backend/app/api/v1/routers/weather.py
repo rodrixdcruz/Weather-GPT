@@ -69,9 +69,11 @@ async def get_current_weather(
     reading = await _fetch_current_reading(latitude, longitude, scenario, judge=scenario != "normal")
     assessment = RiskEngine().assess(reading)
 
-    # Collapse the taxonomy into the legacy single-risk shape: the top
-    # priority risk for the default role drives level/hazard/explanation.
-    top = assessment.risks[0] if assessment.risks else None
+    # Collapse the taxonomy into the legacy single-risk shape: the most
+    # SEVERE risk (severity rank, then score; role priority breaks ties)
+    # drives level/hazard/explanation — a headline must never say "air
+    # quality: moderate" while rainfall is HIGH in the same assessment.
+    top = max(assessment.risks, key=lambda item: (item.severity.rank, item.score), default=None)
     if top is not None:
         legacy_risk = RiskResponse(
             score=top.score,

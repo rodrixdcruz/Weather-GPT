@@ -219,6 +219,24 @@ class TestScenarioGateEndToEnd:
         assert body["weather"]["source"] == "mock_fixture"  # mock fixtures keep their provenance
 
     @pytest.mark.asyncio
+    async def test_judge_scenario_headline_is_most_severe_risk(self, auth_client):
+        """The legacy embedded risk must headline the WORST risk, not the first.
+
+        Regression: /weather/current used assessment.risks[0], which is sorted
+        by role priority — so air_quality (moderate) won the headline while
+        rainfall sat at HIGH under the flood scenario.
+        """
+        token = await self._login_token(auth_client, "judge", "judge123")
+        response = await auth_client.get(
+            "/api/v1/weather/current?latitude=19.076&longitude=72.8777&scenario=flood_risk",
+            headers={"X-Session-Token": token},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["risk"]["level"] in ("high", "extreme")
+        assert body["risk"]["hazard_type"] == "rainfall"
+
+    @pytest.mark.asyncio
     async def test_demo_session_asking_for_scenario_gets_live(self, auth_client):
         token = await self._login_token(auth_client, "demo", "demo123")
         response = await auth_client.get(
