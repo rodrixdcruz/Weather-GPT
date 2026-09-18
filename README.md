@@ -387,6 +387,40 @@ The role is chosen once on the login screen and locked onto the server
 session — changing it requires logging out, and every API request is
 authorized and role-resolved from the session token (not from the client).
 
+## Judge demo walkthrough
+
+The app ships a special **judge account** for reviewers and evaluators:
+sign in as `judge` (default password `judge123`) — you'll see the full
+citizen dashboard, no role pick needed, plus two extras no other account gets:
+
+1. **A guided feature tour auto-opens** — an 8-step spotlight walkthrough of
+   every feature (live weather, explainable risks, the overall gauge, grounded
+   chat, forecast, the 3D presenter, shelter routing, and SOS). Escape/✕ skips
+   it; the ✨ Feature tour button in the header replays it anytime.
+2. **The 🧑‍⚖️ Demo console** appears in the header. It re-bends the *live*
+   weather feed toward five scenarios so the whole app visibly reacts:
+
+   | Scenario | What to watch |
+   |---|---|
+   | 🌧️ Heavy rainfall | 68 mm — the risk engine escalates to HIGH on its own |
+   | 🔥 Heatwave | 43 °C dry heat — heat detectors take over |
+   | ⛈️ Thunderstorm | 38 kph squalls — wind + lightning risks |
+   | 🌊 Flood risk | 110 mm — the full emergency cascade: travel mode auto-switches to walking, an amber hint appears, and the map auto-routes to the nearest shelter |
+   | 🌫️ Smog | AQI ~168 Unhealthy — air-quality advisories |
+
+   Click **🌍 Live data** to snap back to genuine observations. While a
+   scenario is active a **SIMULATED** banner shows and affected cards are
+   labeled **ESTIMATE** — the demo never misrepresents data provenance.
+
+Scenario requests are **enforced server-side**: only sessions belonging to
+the judge account can pass the `scenario` parameter — regular/demo logins
+silently get real data. The account is configured with `AUTH_JUDGE_*`
+settings (`AUTH_JUDGE_ENABLED=false` disables it) and, like admin/demo, is
+seeded idempotently at startup. **The deployment at
+[weathergpt-web.onrender.com](https://weathergpt-web.onrender.com) uses a
+rotated judge password** — if the default doesn't work there, that's why;
+self-hosted instances use the default.
+
 ## AI safety / hallucination control
 
 The system prompt and architecture enforce: never invent weather values;
