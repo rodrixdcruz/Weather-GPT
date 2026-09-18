@@ -113,3 +113,6 @@ async def get_travel_times(
 
 
 __all__ = ["router", "reset_routing_caches"]
+
+# Routing responses are point-in-time estimates; the 60 s client cache
+# above intentionally trades freshness for fewer proxy traversals.
