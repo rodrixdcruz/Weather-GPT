@@ -74,6 +74,10 @@ The production stack is two Render services — a static frontend (`weathergpt-w
 
 ![In-app shelter routing on the map](docs/screenshots/map-routing.jpg)
 
+**Judge demo console — re-bend live weather into five scenarios and watch the whole app react (SIMULATED banner on, ESTIMATE labels everywhere).**
+
+![Judge demo console with five weather scenarios](docs/screenshots/judge-demo-console.png)
+
 ## The pipeline
 
 ```
