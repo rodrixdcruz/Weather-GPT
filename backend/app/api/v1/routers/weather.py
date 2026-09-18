@@ -1,6 +1,8 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.api.v1.deps import optional_session
 from app.core.logging import get_logger
+from app.models.models import LoginSession
 from app.schemas.schemas import (
     ForecastDayResponse,
     ForecastResponse,
@@ -12,7 +14,7 @@ from app.schemas.schemas import (
 )
 from app.services.risk.engine import RiskEngine
 from app.services.weather.base import WeatherProviderError
-from app.services.weather.factory import get_weather_provider
+from app.services.weather.factory import get_weather_provider, resolve_demo_scenario
 
 router = APIRouter(prefix="/weather", tags=["weather"])
 log = get_logger(__name__)
@@ -39,8 +41,8 @@ def _provider_http_error(exc: WeatherProviderError) -> HTTPException:
     return HTTPException(status_code=status, detail=exc.detail)
 
 
-async def _fetch_current_reading(latitude: float, longitude: float, scenario: str):
-    provider = get_weather_provider(scenario=scenario)
+async def _fetch_current_reading(latitude: float, longitude: float, scenario: str, judge: bool = False):
+    provider = get_weather_provider(scenario=scenario, judge=judge)
     try:
         return await provider.get_current(latitude, longitude)
     except WeatherProviderError as exc:
@@ -51,7 +53,8 @@ async def _fetch_current_reading(latitude: float, longitude: float, scenario: st
 async def get_current_weather(
     latitude: float = Query(..., ge=-90, le=90),
     longitude: float = Query(..., ge=-180, le=180),
-    scenario: str = Query("normal", description="Demo-only scenario override (mock provider)"),
+    scenario: str = Query("normal", description="Judge-demo scenario (ignored for other sessions)"),
+    session: LoginSession | None = Depends(optional_session),
 ):
     """Current weather + derived overall risk for a location.
 
@@ -60,7 +63,10 @@ async def get_current_weather(
     the frontend must label it accordingly and never imply certainty
     the data doesn't have.
     """
-    reading = await _fetch_current_reading(latitude, longitude, scenario)
+    # Scenario simulation is judge-only (resolve silently downgrades everyone
+    # else to live data); the flag also selects mock fixtures when configured.
+    scenario = resolve_demo_scenario(scenario, session)
+    reading = await _fetch_current_reading(latitude, longitude, scenario, judge=scenario != "normal")
     assessment = RiskEngine().assess(reading)
 
     # Collapse the taxonomy into the legacy single-risk shape: the top
@@ -92,8 +98,10 @@ async def get_forecast(
     longitude: float = Query(..., ge=-180, le=180),
     days: int = Query(7, ge=1, le=14),
     scenario: str = Query("normal"),
+    session: LoginSession | None = Depends(optional_session),
 ):
-    provider = get_weather_provider(scenario=scenario)
+    scenario = resolve_demo_scenario(scenario, session)
+    provider = get_weather_provider(scenario=scenario, judge=scenario != "normal")
     try:
         forecast = await provider.get_forecast(latitude, longitude, days=days)
     except WeatherProviderError as exc:

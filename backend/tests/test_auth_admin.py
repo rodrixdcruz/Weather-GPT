@@ -28,6 +28,9 @@ _PINNED_CREDENTIALS = {
     "AUTH_ADMIN_PASSWORD": ADMIN_PASSWORD,
     "AUTH_DEMO_USERNAME": DEMO_USERNAME,
     "AUTH_DEMO_PASSWORD": DEMO_PASSWORD,
+    "AUTH_JUDGE_USERNAME": "judge",
+    "AUTH_JUDGE_PASSWORD": "judge123",
+    "AUTH_JUDGE_ENABLED": True,
 }
 
 
@@ -112,6 +115,58 @@ class TestLogin:
         response = await _login(auth_client, "demo", DEMO_PASSWORD, "astronaut")
         assert response.status_code == 200
         assert response.json()["role"] == "customer"
+
+    @pytest.mark.asyncio
+    async def test_judge_account_seeds_and_logs_in_as_citizen(self, auth_client):
+        response = await _login(auth_client, "judge", "judge123")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["role"] == "customer"
+        assert body["user"]["is_admin"] is False
+        assert body["user"]["display_name"] == "Judge"
+
+    @pytest.mark.asyncio
+    async def test_judge_account_can_take_any_role(self, auth_client):
+        response = await _login(auth_client, "judge", "judge123", "farmer")
+        assert response.status_code == 200
+        assert response.json()["role"] == "farmer"
+
+    @pytest.mark.asyncio
+    async def test_judge_seeding_disabled_when_flag_off(self, monkeypatch):
+        settings = get_settings()
+        for name, value in _PINNED_CREDENTIALS.items():
+            monkeypatch.setattr(settings, name, value)
+        monkeypatch.setattr(settings, "AUTH_JUDGE_ENABLED", False)
+        engine = create_engine(
+            "sqlite://",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+            future=True,
+        )
+        TestingSession = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+        Base.metadata.create_all(bind=engine)
+        with TestingSession() as db:
+            created = seed_accounts(db)
+        assert "judge" not in created
+        assert "demo" in created
+
+        def _override_get_db():
+            db = TestingSession()
+            try:
+                yield db
+            finally:
+                db.close()
+
+        app.dependency_overrides[get_db] = _override_get_db
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                response = await client.post(
+                    "/api/v1/auth/login", json={"username": "judge", "password": "judge123", "role": None}
+                )
+            assert response.status_code == 401
+        finally:
+            app.dependency_overrides.pop(get_db, None)
+            engine.dispose()
 
     @pytest.mark.asyncio
     async def test_wrong_password_and_unknown_user_are_indistinguishable(self, auth_client):

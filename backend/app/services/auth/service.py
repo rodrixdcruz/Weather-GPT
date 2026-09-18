@@ -100,6 +100,22 @@ def revoke_session(db: Session, session: LoginSession) -> None:
     log.info("auth.logout session_role=%s", session.role)
 
 
+def is_judge_account(account: Account | None) -> bool:
+    """Whether this account is the configured judge/hackathon account.
+
+    Computed from config, never stored: no schema migration, and renaming
+    the judge account in config instantly re-points the flag. Single source
+    of truth for both the session response and the scenario-simulation gate.
+    """
+    if account is None:
+        return False
+    settings = get_settings()
+    return bool(
+        settings.AUTH_JUDGE_ENABLED
+        and account.username == (settings.AUTH_JUDGE_USERNAME or "").strip().lower()
+    )
+
+
 def describe_session(session: LoginSession) -> dict:
     """Serialized shape shared by /auth/* and /admin/* responses."""
     account = session.account
@@ -113,6 +129,7 @@ def describe_session(session: LoginSession) -> dict:
             "display_name": account.display_name or account.username,
             "role": account.role,
             "is_admin": account.is_admin,
+            "is_judge": is_judge_account(account),
         },
     }
 
@@ -133,6 +150,11 @@ def seed_accounts(db: Session) -> list[str]:
 
     Idempotent: an existing username is left untouched (never resets a
     password someone already changed). Returns the usernames created.
+
+    Only ENABLED accounts are seeded — but note the one-way ratchet: a judge
+    account already created in a database stays there after later disabling
+    AUTH_JUDGE_ENABLED (seeding never deletes). Deployments that must not have
+    one should also drop the row.
     """
     settings = get_settings()
     created: list[str] = []
@@ -152,6 +174,16 @@ def seed_accounts(db: Session) -> list[str]:
             "is_admin": False,
         },
     ]
+    if settings.AUTH_JUDGE_ENABLED:
+        seeds.append(
+            {
+                "username": settings.AUTH_JUDGE_USERNAME,
+                "password": settings.AUTH_JUDGE_PASSWORD,
+                "display_name": settings.AUTH_JUDGE_DISPLAY_NAME,
+                "role": "customer",
+                "is_admin": False,
+            }
+        )
     for seed in seeds:
         username = (seed["username"] or "").strip().lower()
         if not username or get_account_by_username(db, username):

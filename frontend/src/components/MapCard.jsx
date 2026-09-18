@@ -66,7 +66,7 @@ function RouteFitBounds({ coords }) {
  * travel mode, or the user's location changes, so the line always reflects
  * the current origin and profile. Stale responses are ignored via abort.
  */
-export default function MapCard({ center, safeZones = [], travelMode = 'driving', onTravelModeChange, activeRoute, onDirections, language }) {
+export default function MapCard({ center, safeZones = [], travelMode = 'driving', onTravelModeChange, emergencyHint = false, activeRoute, onDirections, language }) {
   const [route, setRoute] = useState(null)
   const routeAbortRef = useRef(null)
 
@@ -103,6 +103,7 @@ export default function MapCard({ center, safeZones = [], travelMode = 'driving'
 
   return (
     <div
+      data-tour="shelter-map"
       className="bg-gradient-to-b from-navy-900 to-navy-800 border border-border rounded-2xl overflow-hidden relative p-0 min-h-[360px]"
       style={{ isolation: 'isolate' }}
     >
@@ -110,8 +111,16 @@ export default function MapCard({ center, safeZones = [], travelMode = 'driving'
         {t(language, 'nearbySafeZones')}
       </div>
       {safeZones.length > 0 && (
-        <div className="absolute top-2.5 right-2.5 z-[1000]">
+        <div className="absolute top-2.5 right-2.5 z-[1000] flex flex-col items-end gap-1">
           <TravelModeToggle mode={travelMode} onChange={onTravelModeChange} language={language} />
+          {emergencyHint && (
+            <div
+              role="status"
+              className="bg-amber-500/15 border border-amber-500/40 text-amber-300 rounded-lg px-2 py-0.5 text-[10px] font-semibold max-w-[180px] text-right backdrop-blur-sm"
+            >
+              ⚠ {t(language, 'emergencyWalking')}
+            </div>
+          )}
         </div>
       )}
       <MapContainer

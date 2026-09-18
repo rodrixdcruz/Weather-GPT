@@ -110,6 +110,9 @@ export default function LoginPage({ language, onLanguageChange, onSignIn }) {
               })}
             </div>
             <p className="text-[10.5px] text-yellow-400 m-0 mt-1">🔒 {t(language, 'loginRoleLocked')}</p>
+            {role === 'judge' && (
+              <p className="text-[10.5px] text-sky m-0 mt-1">✨ {t(language, 'tourWelcomeBody')}</p>
+            )}
           </fieldset>
 
           {error && (

@@ -68,6 +68,12 @@ services:
       # It is a customer-role login and carries no admin rights.
       AUTH_DEMO_USERNAME: ${AUTH_DEMO_USERNAME:-demo}
       AUTH_DEMO_PASSWORD: ${AUTH_DEMO_PASSWORD:-demo123}
+      # Judge (hackathon evaluation) account. Same citizen view as demo; the
+      # dashboard opens the guided feature tour for it. Set a real value for
+      # any deployment judges can reach.
+      AUTH_JUDGE_ENABLED: ${AUTH_JUDGE_ENABLED:-true}
+      AUTH_JUDGE_USERNAME: ${AUTH_JUDGE_USERNAME:-judge}
+      AUTH_JUDGE_PASSWORD: ${AUTH_JUDGE_PASSWORD:-judge123}
     volumes:
       - ./backend:/app
     ports:

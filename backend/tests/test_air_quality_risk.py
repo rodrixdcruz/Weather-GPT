@@ -136,16 +136,69 @@ class TestAirQualityEndpointFlow:
 
     @pytest.mark.asyncio
     async def test_aqi_flows_through_mock_scenario_api(self, client, monkeypatch):
-        """With the real mock provider, the smog scenario surfaces the AQI risk end-to-end."""
+        """With the real mock provider, the judge-gated smog scenario surfaces the AQI risk end-to-end.
+
+        Scenario simulation is judge-only, so this test signs in with the
+        judge account (the anonymous case is covered by the gate tests in
+        test_scenario_sim.py).
+        """
+        from app.core.config import get_settings
+        from httpx import ASGITransport, AsyncClient
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        from sqlalchemy.pool import StaticPool
+
         from app.api.v1.routers import risk as risk_router
         from app.api.v1.routers import weather as weather_router
+        from app.db.session import Base, get_db
+        from app.main import app
+        from app.services.auth.service import seed_accounts
         from app.services.weather.factory import get_weather_provider as _real
 
+        settings = get_settings()
+        monkeypatch.setattr(settings, "AUTH_JUDGE_USERNAME", "judge")
+        monkeypatch.setattr(settings, "AUTH_JUDGE_PASSWORD", "judge123")
+        monkeypatch.setattr(settings, "AUTH_JUDGE_ENABLED", True)
+        monkeypatch.setattr(settings, "WEATHER_PROVIDER", "mock")
         # Route through the actual mock provider for this test only.
-        monkeypatch.setattr(weather_router, "get_weather_provider", lambda scenario="normal": _real(scenario))
-        monkeypatch.setattr(risk_router, "get_weather_provider", lambda scenario="normal": _real(scenario))
+        monkeypatch.setattr(weather_router, "get_weather_provider", lambda scenario="normal", judge=False: _real(scenario, judge=judge))
+        monkeypatch.setattr(risk_router, "get_weather_provider", lambda scenario="normal", judge=False: _real(scenario, judge=judge))
 
-        response = await client.get("/api/v1/risk?latitude=19.076&longitude=72.8777&role=customer&scenario=smog")
+        engine = create_engine(
+            "sqlite://",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+            future=True,
+        )
+        TestingSession = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+        Base.metadata.create_all(bind=engine)
+        with TestingSession() as db:
+            seed_accounts(db)
+
+        def _override():
+            db = TestingSession()
+            try:
+                yield db
+            finally:
+                db.close()
+
+        app.dependency_overrides[get_db] = _override
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as authed:
+                login = await authed.post(
+                    "/api/v1/auth/login", json={"username": "judge", "password": "judge123", "role": None}
+                )
+                assert login.status_code == 200
+                token = login.json()["token"]
+
+                response = await authed.get(
+                    "/api/v1/risk?latitude=19.076&longitude=72.8777&role=customer&scenario=smog",
+                    headers={"X-Session-Token": token},
+                )
+        finally:
+            app.dependency_overrides.pop(get_db, None)
+            engine.dispose()
+
         assert response.status_code == 200
         body = response.json()
         categories = {r["category"] for r in body["risks"]}

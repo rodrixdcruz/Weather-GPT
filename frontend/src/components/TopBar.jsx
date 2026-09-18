@@ -15,6 +15,9 @@ export default function TopBar({
   session = null,
   onLogout,
   onAdminClick,
+  onTourClick,
+  onJudgeClick,
+  isJudge = false,
 }) {
   const user = session?.user
   const isAdmin = Boolean(user?.is_admin)
@@ -42,11 +45,33 @@ export default function TopBar({
           </button>
 
           <button
+            data-tour="sos"
             className="bg-gradient-to-br from-red-500 to-red-700 border-none text-white font-bold tracking-wide px-4 py-2 rounded-full text-xs animate-sos"
             onClick={onSosClick}
           >
             {t(language, 'sos')}
           </button>
+
+          {/* Guided feature tour — one click away for any user, auto-opened
+              for the judge account (see FeatureTour.jsx). */}
+          <button
+            data-tour="tour-button"
+            className="bg-navy-800 border border-border text-slate-100 px-3 py-1.5 rounded-full text-xs flex items-center gap-1.5 hover:border-sky transition"
+            onClick={onTourClick}
+          >
+            ✨ {t(language, 'tourHeaderButton')}
+          </button>
+
+          {/* Judge demo console: rendered ONLY for the judge session (the
+              backend gates the actual simulation independently). */}
+          {isJudge && (
+            <button
+              className="bg-gradient-to-br from-fuchsia-600 to-purple-700 border-none text-white px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 hover:brightness-110 transition"
+              onClick={onJudgeClick}
+            >
+              🧑‍⚖️ {t(language, 'judgePanel')}
+            </button>
+          )}
 
           {/* Admin panel is admin-only; the backend enforces it too. */}
           {isAdmin && (

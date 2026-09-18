@@ -107,6 +107,11 @@ services:
       AUTH_ADMIN_PASSWORD: "${AUTH_ADMIN_PASSWORD:?set AUTH_ADMIN_PASSWORD in the root .env before deploying}"
       AUTH_ADMIN_DISPLAY_NAME: ${AUTH_ADMIN_DISPLAY_NAME:-Operations Admin}
       AUTH_DEMO_USERNAME: ${AUTH_DEMO_USERNAME:-demo}
+      # Judge (hackathon evaluation) account — public deployments should set a
+      # real AUTH_JUDGE_PASSWORD (judges see the citizen view + feature tour).
+      AUTH_JUDGE_ENABLED: ${AUTH_JUDGE_ENABLED:-true}
+      AUTH_JUDGE_USERNAME: ${AUTH_JUDGE_USERNAME:-judge}
+      AUTH_JUDGE_PASSWORD: ${AUTH_JUDGE_PASSWORD:-judge123}
       # REQUIRED — a fresh deploy must not silently boot on the published
       # demo123. This only affects seeding of accounts that do not exist yet.
       AUTH_DEMO_PASSWORD: "${AUTH_DEMO_PASSWORD:?set AUTH_DEMO_PASSWORD in the root .env before deploying}"

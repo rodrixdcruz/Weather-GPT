@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import TopBar from './components/TopBar'
 import AlertBanner from './components/AlertBanner'
 import WeatherCard from './components/WeatherCard'
@@ -13,12 +13,14 @@ import SafetyDashboard from './components/SafetyDashboard'
 import RoleSelector from './components/RoleSelector'
 import LoginPage from './components/LoginPage'
 import AdminPanel from './components/AdminPanel'
+import FeatureTour from './components/FeatureTour'
+import JudgePanel from './components/JudgePanel'
 import { ErrorState, LoadingState, SkeletonCard } from './components/StateViews'
 import { SafetyTips, SafeZonesList } from './components/SidePanels'
 import { I18N, t } from './i18n'
 import { api } from './lib/api'
 import { useSession } from './lib/session'
-import { getWeatherUIState } from './weather'
+import { getWeatherUIState, getRiskState, RISK_LEVELS } from './weather'
 import WeatherAtmosphere from './weather/WeatherAtmosphere'
 import RiskSafetyPanel from './weather/RiskSafetyPanel'
 import ReactiveMap from './weather/map/ReactiveMap'
@@ -47,15 +49,63 @@ export default function App() {
 }
 
 function Dashboard({ session, language, onLanguageChange, onSignOut }) {
-  // No scenario picker any more: the weather comes from the location and the
-  // live provider, so the app always reads the `normal` path. `scenario` is
-  // kept as a constant because the provider contract still takes one, and
-  // live providers (open_meteo) ignore it — restoring a selector later is a
-  // one-line change.
-  const [scenario] = useState('normal')
+  // Guided feature tour. Auto-opens ONCE for the judge account (keyed to the
+  // session token, so re-visits and refreshes never ambush); every other
+  // user opens it from the ✨ header button, which remembers completion for
+  // that account so the badge can hint without nagging.
+  const [tourOpen, setTourOpen] = useState(false)
+  const [tourStep, setTourStep] = useState(-1)
+  const tourAutoFired = useRef(false)
+
+  useEffect(() => {
+    if (!session?.user?.is_judge || tourAutoFired.current) return
+    tourAutoFired.current = true
+    try {
+      if (localStorage.getItem(`wg_tour_done_${session.token}`) === '1') return
+    } catch {
+      /* private mode: the tour simply re-offers every visit */
+    }
+    setTourStep(0)
+    setTourOpen(true)
+  }, [session])
+
+  const closeTour = useCallback(() => {
+    setTourOpen(false)
+    setTourStep(-1)
+    if (session?.token) {
+      try {
+        localStorage.setItem(`wg_tour_done_${session.token}`, '1')
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [session?.token])
+
+  const openTour = useCallback(() => {
+    setTourStep(0)
+    setTourOpen(true)
+  }, [])
+
+  // Weather scenario. `normal` = live data for everyone. The other values are
+  // a JUDGE-ONLY demo console: the backend re-bends its live readings toward
+  // the scenario (labeled ESTIMATE) and silently serves live data to any other
+  // session, so this state can only ever affect a judge account.
+  const [scenario, setScenario] = useState('normal')
   const [sosOpen, setSosOpen] = useState(false)
   const [langOpen, setLangOpen] = useState(false)
   const [adminOpen, setAdminOpen] = useState(false)
+  const [judgeConsoleOpen, setJudgeConsoleOpen] = useState(false)
+  const isJudge = Boolean(session.user.is_judge)
+
+  // Switching the simulated scenario must reset the emergency automation so
+  // each demo playthrough behaves like a fresh session (auto-route can fire,
+  // travel-mode default re-engages, user-override flag clears).
+  const handleScenarioChange = useCallback((next) => {
+    setScenario(next)
+    travelModeTouchedRef.current = false
+    autoRouteArmedRef.current = true
+    setActiveRoute(null)
+  }, [])
   const [view, setView] = useState('dashboard') // dashboard | safety
 
   const [location, setLocation] = useState(FALLBACK_LOCATION)
@@ -86,8 +136,15 @@ function Dashboard({ session, language, onLanguageChange, onSignOut }) {
   const [forecast, setForecast] = useState(null)
   const [safeZones, setSafeZones] = useState([])
   // Travel mode for shelter directions — one choice shared by the map and
-  // the shelter list, so toggling in either place updates both.
+  // the shelter list, so toggling in either place updates both. The default
+  // follows the risk level: HIGH/EXTREME starts on walking (emergencies are
+  // usually on foot) until the user picks a mode themselves, after which
+  // their explicit choice always wins.
   const [travelMode, setTravelMode] = useState('driving')
+  const travelModeTouchedRef = useRef(false)
+  // Auto-route arming lives with the travel-mode refs so the judge-demo
+  // scenario switch can reset the whole emergency automation from above.
+  const autoRouteArmedRef = useRef(true)
   // Active shelter route ({ to, name } | null) drawn in-app on the map;
   // shared so both the list rows and map popups can open/close it.
   const [activeRoute, setActiveRoute] = useState(null)
@@ -101,6 +158,34 @@ function Dashboard({ session, language, onLanguageChange, onSignOut }) {
     const to = targetOrReq.to ?? targetOrReq
     setActiveRoute({ to, name: targetOrReq.name ?? name })
   }, [])
+
+  // Any explicit toggle click takes ownership of the travel mode away from
+  // the risk-driven default (both toggle instances pass this setter).
+  const handleTravelModeChange = useCallback((mode) => {
+    travelModeTouchedRef.current = true
+    setTravelMode(mode)
+  }, [])
+
+  // Auto-route: the first time the overall risk reaches HIGH/EXTREME, open
+  // the in-app route to the nearest VERIFIED shelter without a click. Fires
+  // once per escalation (armed → fired), stays quiet while the risk remains
+  // in the band — so it never re-opens over a user who closed it — and
+  // re-arms when the risk drops back down, ready for the next emergency.
+  useEffect(() => {
+    const { level } = getRiskState(weather, assessment)
+    const inBand = level === RISK_LEVELS.HIGH || level === RISK_LEVELS.EXTREME
+    if (!inBand) {
+      autoRouteArmedRef.current = true
+      return
+    }
+    if (!autoRouteArmedRef.current || !safeZones.length) return
+    const origin = { latitude: location.latitude, longitude: location.longitude }
+    if (!Number.isFinite(origin.latitude) || !Number.isFinite(origin.longitude)) return
+    const byDistance = [...safeZones].sort((a, b) => a.distance_km - b.distance_km)
+    const nearest = byDistance.find((z) => z.is_verified) || byDistance[0]
+    autoRouteArmedRef.current = false
+    showDirections(nearest, nearest.name)
+  }, [weather, assessment, safeZones, location, showDirections])
 
   const [weatherLoading, setWeatherLoading] = useState(true)
   const [weatherError, setWeatherError] = useState(null)
@@ -244,6 +329,28 @@ function Dashboard({ session, language, onLanguageChange, onSignOut }) {
   // Centralized UI state: condition + time-of-day theme + risk interpretation
   // derived from the SAME weather/assessment data the existing cards consume.
   const uiState = getWeatherUIState(weather, assessment)
+
+  // Emergency-aware directions default: while the user hasn't picked a mode
+  // themselves, the shared travel mode tracks the risk level — walking when
+  // the overall risk is HIGH/EXTREME (emergencies are usually on foot),
+  // driving otherwise. Severity comes from the same getRiskState()
+  // normalization the risk cards use, so the toggle can never disagree with
+  // the displayed risk. Once touched, the user's choice always wins.
+  useEffect(() => {
+    if (travelModeTouchedRef.current) return
+    const { level } = getRiskState(weather, assessment)
+    const emergency = level === RISK_LEVELS.HIGH || level === RISK_LEVELS.EXTREME
+    setTravelMode(emergency ? 'walking' : 'driving')
+  }, [weather, assessment])
+
+  // The map shows a small hint chip while the walking default was chosen BY
+  // THE RISK ENGINE (not the user). Re-evaluated every render; a user click
+  // sets the touched ref, so the chip disappears on the same interaction.
+  const currentRiskLevel = getRiskState(weather, assessment).level
+  const emergencyWalking =
+    !travelModeTouchedRef.current &&
+    travelMode === 'walking' &&
+    (currentRiskLevel === RISK_LEVELS.HIGH || currentRiskLevel === RISK_LEVELS.EXTREME)
   const locationBar = locationExpanded ? (
     <section aria-label={t(language, 'locationLabel')} className="bg-gradient-to-b from-navy-900 to-navy-800 border border-border rounded-2xl p-4 flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
@@ -381,12 +488,27 @@ function Dashboard({ session, language, onLanguageChange, onSignOut }) {
         session={session}
         onLogout={onSignOut}
         onAdminClick={() => setAdminOpen(true)}
+        onTourClick={openTour}
+        onJudgeClick={() => setJudgeConsoleOpen(true)}
+        isJudge={isJudge}
       />
 
       <div className="max-w-[1440px] mx-auto p-5 flex flex-col gap-4">
         {/* Locked: the role belongs to the session until logout. */}
         <RoleSelector role={role} language={language} locked />
         {locationBar}
+
+        {/* Judge-demo banner: unavoidable, honest, and impossible to mistake
+            for live data — while a scenario is active, EVERY provider response
+            already carries is_verified=False (ESTIMATE badges on the cards). */}
+        {isJudge && scenario !== 'normal' && (
+          <div
+            role="status"
+            className="text-[11.5px] font-semibold text-fuchsia-200 bg-fuchsia-600/15 border border-fuchsia-500/40 rounded-xl px-4 py-2.5"
+          >
+            🧪 {t(language, 'simBanner').replace('{name}', t(language, `sim_${scenario}`))}
+          </div>
+        )}
 
         {/* Safety-first banner + risk/safety summary (text, never color-only) */}
         {uiState.priority === 'safety-first' && (
@@ -458,7 +580,7 @@ function Dashboard({ session, language, onLanguageChange, onSignOut }) {
                 uiState={uiState}
               />
             )}
-            <div className="bg-gradient-to-b from-navy-900 to-navy-800 border border-border rounded-2xl p-4 flex flex-col">
+            <div data-tour="risk-gauge" className="bg-gradient-to-b from-navy-900 to-navy-800 border border-border rounded-2xl p-4 flex flex-col">
               <div className="text-[11.5px] uppercase tracking-wide text-slate-300 font-semibold mb-1">
                 {t(language, 'riskLevel')}
               </div>
@@ -506,7 +628,8 @@ function Dashboard({ session, language, onLanguageChange, onSignOut }) {
             center={location}
             safeZones={safeZones}
             travelMode={travelMode}
-            onTravelModeChange={setTravelMode}
+            onTravelModeChange={handleTravelModeChange}
+            emergencyHint={emergencyWalking}
             activeRoute={activeRoute}
             onDirections={showDirections}
             language={language}
@@ -517,7 +640,7 @@ function Dashboard({ session, language, onLanguageChange, onSignOut }) {
               zones={safeZones}
               origin={location}
               travelMode={travelMode}
-              onTravelModeChange={setTravelMode}
+              onTravelModeChange={handleTravelModeChange}
               onDirections={showDirections}
               language={language}
             />
@@ -541,6 +664,22 @@ function Dashboard({ session, language, onLanguageChange, onSignOut }) {
       {adminOpen && session.user.is_admin && (
         <AdminPanel language={language} session={session} onClose={() => setAdminOpen(false)} />
       )}
+
+      <FeatureTour
+        open={tourOpen}
+        step={tourStep}
+        onStepChange={setTourStep}
+        onClose={closeTour}
+        language={language}
+      />
+
+      <JudgePanel
+        open={judgeConsoleOpen}
+        scenario={scenario}
+        onScenarioChange={handleScenarioChange}
+        onClose={() => setJudgeConsoleOpen(false)}
+        language={language}
+      />
     </div>
     </WeatherAtmosphere>
   )

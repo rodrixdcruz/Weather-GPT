@@ -73,7 +73,7 @@ export default function RiskPanel({ assessment, loading, error, language = 'en',
   }
 
   return (
-    <section aria-label={t(language, 'riskAssessment')} className="bg-gradient-to-b from-navy-900 to-navy-800 border border-border rounded-2xl p-4">
+    <section data-tour="risk-cards" aria-label={t(language, 'riskAssessment')} className="bg-gradient-to-b from-navy-900 to-navy-800 border border-border rounded-2xl p-4">
       <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
         <h3 className="font-display m-0 text-[14.5px]">{t(language, 'riskAssessment')}</h3>
         {assessment && (

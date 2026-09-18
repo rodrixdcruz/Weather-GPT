@@ -61,7 +61,7 @@ def stub_calm_provider(monkeypatch):
 
     provider = StubProvider(reading=_calm_reading())
     for module in (weather_router, risk_router, safety_router, chat_router):
-        monkeypatch.setattr(module, "get_weather_provider", lambda scenario="normal", _p=provider: _p)
+        monkeypatch.setattr(module, "get_weather_provider", lambda scenario="normal", judge=False, _p=provider: _p)
     return provider
 
 

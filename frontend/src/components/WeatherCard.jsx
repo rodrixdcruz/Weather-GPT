@@ -7,7 +7,7 @@ export default function WeatherCard({ weather, language }) {
   const aqi = weather.air_quality
 
   return (
-    <div className="bg-gradient-to-b from-navy-900 to-navy-800 border border-border rounded-2xl p-4">
+    <div data-tour="weather" className="bg-gradient-to-b from-navy-900 to-navy-800 border border-border rounded-2xl p-4">
       <div className="flex items-center justify-between mb-2">
         <span className="text-[11px] uppercase tracking-wide text-slate-300 font-semibold">
           {t(language, 'currentWeather')}

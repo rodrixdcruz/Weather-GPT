@@ -134,7 +134,7 @@ export default function ChatPanel({
   const suggestions = roleSuggestions[role] || dict.chips || roleSuggestions.customer || []
 
   return (
-    <div className="bg-gradient-to-b from-navy-900 to-navy-800 border border-border rounded-2xl overflow-hidden flex flex-col p-0">
+    <div data-tour="chat" className="bg-gradient-to-b from-navy-900 to-navy-800 border border-border rounded-2xl overflow-hidden flex flex-col p-0">
       <div className="px-4 py-3 border-b border-border flex items-center gap-3">
         <Suspense fallback={<VoiceCharacter state={avatarState} size={52} weatherProp={weatherProp} mood={riskTrend} />}>
           <Presenter3D

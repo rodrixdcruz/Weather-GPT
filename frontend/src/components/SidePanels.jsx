@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react'
 import { t } from '../i18n'
+import { fetchTravelTimes } from '../lib/routing'
 
 // Tip copy per language per scenario. Falls back to English if a
 // language/scenario pair is missing.
@@ -91,6 +93,27 @@ export function mapsDirectionsUrl(from, to, mode = 'driving') {
   )
 }
 
+/** Compact 🚶/🚗 minute badges under a shelter's straight-line distance. */
+function TravelTimeBadges({ times, language }) {
+  if (!times) return null
+  const badge = (icon, min) => (
+    <span
+      key={icon}
+      className="inline-flex items-center gap-0.5 ml-2 text-[10px] text-slate-100 bg-navy-900/70 border border-border rounded px-1 py-px"
+      title={t(language, 'travelTimes')}
+    >
+      {icon}
+      {min == null ? t(language, 'timesUnavailable') : `${min} ${t(language, 'routeMinutes')}`}
+    </span>
+  )
+  return (
+    <span>
+      {badge(t(language, 'walkTime'), times.walkMin)}
+      {badge(t(language, 'driveTime'), times.driveMin)}
+    </span>
+  )
+}
+
 /**
  * Opens a ready-made navigation route from the user's live position to a
  * shelter. Uses Google Maps' universal dir URL — no API key, and on phones
@@ -129,9 +152,62 @@ export function DirectionsLink({ from, to, name, mode = 'driving', language = 'e
   )
 }
 
+/**
+ * Fetches walk + drive time estimates (OSRM table, one request per mode)
+ * from the live origin to all shelters. Returns an array aligned with
+ * `zones`: `{ walkMin, driveMin }` or null while loading/unavailable.
+ * Re-runs when the origin moves; a stale response is ignored via abort.
+ */
+function useTravelTimes(zones, origin, enabled) {
+  const [times, setTimes] = useState([])
+  useEffect(() => {
+    if (!enabled || !origin || !zones.length) {
+      setTimes([])
+      return
+    }
+    const controller = new AbortController()
+    // Match the list's [name] keying: times are positional.
+    const load = async (mode) => {
+      try {
+        return await fetchTravelTimes(origin, zones, mode, { signal: controller.signal })
+      } catch {
+        return null // per-mode failure degrades to '—', never blocks the other
+      }
+    }
+    Promise.all([load('walking'), load('driving')]).then(([walk, drive]) => {
+      if (controller.signal.aborted) return
+      setTimes(zones.map((_, i) => ({ walkMin: walk?.[i] ?? null, driveMin: drive?.[i] ?? null })))
+    })
+    return () => controller.abort()
+    // `enabled` only gates the early return above; origin/zones drive the fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [origin, zones])
+  return times
+}
+
 export function SafeZonesList({ zones = [], origin = null, travelMode = 'driving', onTravelModeChange, onDirections, language = 'en' }) {
+  const times = useTravelTimes(zones, origin, Boolean(origin))
+
+  // Rank by the CURRENT travel mode's time: fastest first, unknown times
+  // last (distance as tiebreaker). Each row keeps its original index so the
+  // positional `times` entries stay aligned after sorting. While times are
+  // loading/unavailable every entry is null and the order falls back to the
+  // backend's distance sort — identical to the pre-times behavior.
+  const timeKey = travelMode === 'walking' ? 'walkMin' : 'driveMin'
+  const rows = zones
+    .map((z, i) => ({ zone: z, time: times[i]?.[timeKey] ?? null, index: i }))
+    .sort((a, b) => {
+      if (a.time == null && b.time == null) return a.zone.distance_km - b.zone.distance_km
+      if (a.time == null) return 1
+      if (b.time == null) return -1
+      return a.time - b.time || a.zone.distance_km - b.zone.distance_km
+    })
+  // First row with a known time = fastest overall for this mode. Only that
+  // row gets the badge + highlight; without any times nothing is highlighted.
+  const fastestIndex = rows.find((r) => r.time != null)?.index
+
   return (
-    <div className="bg-gradient-to-b from-navy-900 to-navy-800 border border-border rounded-2xl p-4">
+    <div data-tour="shelter-list" className="bg-gradient-to-b from-navy-900 to-navy-800 border border-border rounded-2xl p-4">
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="text-[11.5px] uppercase tracking-wide text-slate-300 font-semibold">
           {t(language, 'verifiedShelters')}
@@ -139,11 +215,29 @@ export function SafeZonesList({ zones = [], origin = null, travelMode = 'driving
         <TravelModeToggle mode={travelMode} onChange={onTravelModeChange} language={language} />
       </div>
       <div className="flex flex-col gap-2">
-        {zones.map((z) => (
-          <div key={z.name} className="flex items-center justify-between gap-2 bg-navy-700 rounded-lg px-3 py-2">
+        {rows.map(({ zone: z, index: i }) => (
+          <div
+            key={z.name}
+            className={`flex items-center justify-between gap-2 bg-navy-700 rounded-lg px-3 py-2 ${
+              i === fastestIndex ? 'ring-1 ring-emerald-500/50' : ''
+            }`}
+          >
             <div className="min-w-0">
-              <div className="text-[13px] truncate">{z.name}</div>
-              <div className="text-[10.5px] text-slate-300">{z.distance_km} {t(language, 'km')}</div>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-[13px] truncate">{z.name}</span>
+                {i === fastestIndex && (
+                  <span
+                    className="text-[9px] px-1.5 py-px rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 whitespace-nowrap flex-shrink-0"
+                    title={`${t(language, 'fastest')} · ${t(language, travelMode)}`}
+                  >
+                    ⚡ {t(language, 'fastest')}
+                  </span>
+                )}
+              </div>
+              <div className="text-[10.5px] text-slate-300">
+                {z.distance_km} {t(language, 'km')}
+                <TravelTimeBadges times={times[i]} language={language} />
+              </div>
             </div>
             <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
               <span

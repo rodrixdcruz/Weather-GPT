@@ -10,7 +10,7 @@ from app.schemas.schemas import (
 )
 from app.services.risk.engine import RiskEngine
 from app.services.weather.base import WeatherProviderError
-from app.services.weather.factory import get_weather_provider
+from app.services.weather.factory import get_weather_provider, resolve_demo_scenario
 
 router = APIRouter(prefix="/risk", tags=["risk"])
 log = get_logger(__name__)
@@ -21,7 +21,7 @@ async def get_risk_assessment(
     latitude: float = Query(..., ge=-90, le=90),
     longitude: float = Query(..., ge=-180, le=180),
     role: str = Query("customer", description="customer | farmer | traveler | disaster_management_officer"),
-    scenario: str = Query("normal", description="Demo-only scenario override (mock provider)"),
+    scenario: str = Query("normal", description="Judge-demo scenario (ignored for other sessions)"),
     session: LoginSession | None = Depends(optional_session),
 ):
     """Role-aware weather-risk assessment for a location.
@@ -34,8 +34,9 @@ async def get_risk_assessment(
     from app.services.risk.roles import normalize_role
 
     role = effective_role(role, session)
+    scenario = resolve_demo_scenario(scenario, session)
 
-    provider = get_weather_provider(scenario=scenario)
+    provider = get_weather_provider(scenario=scenario, judge=scenario != "normal")
     try:
         reading = await provider.get_current(latitude, longitude)
     except WeatherProviderError as exc:

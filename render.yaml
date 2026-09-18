@@ -111,6 +111,10 @@ services:
         value: demo
       - key: AUTH_DEMO_PASSWORD
         sync: false
+      - key: AUTH_JUDGE_USERNAME
+        value: judge
+      - key: AUTH_JUDGE_PASSWORD
+        sync: false
 
       # --- CORS ---------------------------------------------------------------
       # The static site and the API are different origins, so the browser DOES

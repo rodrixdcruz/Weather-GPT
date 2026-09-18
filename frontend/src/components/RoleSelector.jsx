@@ -17,6 +17,10 @@ export const ROLES = [
   { value: 'farmer', labelKey: 'roleFarmer', icon: '🌾' },
   { value: 'traveler', labelKey: 'roleTraveler', icon: '🧳' },
   { value: 'disaster_management_officer', labelKey: 'roleOfficer', icon: '🏛️' },
+  // Judge card: the backend normalizes the unknown 'judge' role to the
+  // citizen view (normalize_role), so judges see the full app — and the
+  // session comes back flagged is_judge, which auto-opens the feature tour.
+  { value: 'judge', labelKey: 'roleJudge', icon: '🧑‍⚖️' },
 ]
 
 // No DEFAULT_ROLE and no persistence: the role is never "defaulted" or

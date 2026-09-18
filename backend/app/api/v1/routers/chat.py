@@ -25,7 +25,7 @@ from app.services.ai.translations import (
 from app.services.risk.engine import RiskEngine
 from app.services.risk.roles import normalize_role
 from app.services.weather.base import WeatherProviderError
-from app.services.weather.factory import get_weather_provider
+from app.services.weather.factory import get_weather_provider, resolve_demo_scenario
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 log = get_logger(__name__)
@@ -66,7 +66,9 @@ def _fallback_reply(message: str, context: WeatherContext, role: str, language: 
 async def send_chat_message(payload: ChatRequest, session: LoginSession | None = Depends(optional_session)):
     started = time.perf_counter()
     # 1. Weather context (never fabricated — provider errors surface cleanly).
-    provider = get_weather_provider(scenario=payload.scenario)
+    # Scenario simulation is judge-only: other sessions silently get live data.
+    scenario = resolve_demo_scenario(payload.scenario, session)
+    provider = get_weather_provider(scenario=scenario, judge=scenario != "normal")
     try:
         reading = await provider.get_current(payload.latitude, payload.longitude)
     except WeatherProviderError as exc:

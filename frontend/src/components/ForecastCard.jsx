@@ -24,7 +24,7 @@ function dayLabel(dateStr) {
 
 export default function ForecastCard({ forecast, loading, error, language = 'en', onRetry }) {
   return (
-    <section aria-label={t(language, 'forecast')} className="bg-gradient-to-b from-navy-900 to-navy-800 border border-border rounded-2xl p-4">
+    <section data-tour="forecast" aria-label={t(language, 'forecast')} className="bg-gradient-to-b from-navy-900 to-navy-800 border border-border rounded-2xl p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-display m-0 text-[14.5px]">{t(language, 'forecast')}</h3>
         <span className="text-[10.5px] text-slate-300">{forecast?.length ? `${forecast.length} ${t(language, 'days')}` : ''}</span>
