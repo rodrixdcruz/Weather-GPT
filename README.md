@@ -421,6 +421,23 @@ seeded idempotently at startup. **The deployment at
 rotated judge password** — if the default doesn't work there, that's why;
 self-hosted instances use the default.
 
+## Demo account
+
+For a quick look without the judge extras, sign in as `demo` (default
+password `demo123`) — the plain citizen dashboard: live weather, the
+explainable risk engine, grounded chat, the shelter map with routing,
+and the ✨ Feature tour button in the header (it just doesn't auto-open,
+and there's no 🧑‍⚖️ Demo console). Administrators sign in with the
+`AUTH_ADMIN_*` credentials they set themselves.
+
+Same seeding rules as the judge account: the account is created
+idempotently at startup from `AUTH_DEMO_*` settings, and
+**the public deployment uses a rotated demo password** — self-hosted
+instances get the default. Before exposing a deployment publicly, set
+real `AUTH_DEMO_PASSWORD` / `AUTH_JUDGE_PASSWORD` values: the defaults
+are published here by design, so a deployment that keeps them is a
+known-credential login.
+
 ## AI safety / hallucination control
 
 The system prompt and architecture enforce: never invent weather values;
