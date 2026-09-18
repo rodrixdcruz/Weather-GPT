@@ -51,6 +51,12 @@ docker compose up --build
 No API keys needed — weather and risk work out of the box on free
 providers. See below for AI setup and the production stack.
 
+## Deployment
+
+The production stack is two Render services — a static frontend (`weathergpt-web`) and the Dockerized FastAPI backend (`Weather-GPT-1`) — with pushes to `main` auto-deploying per service (filtered by rootDir), manual deploy/rollback via the Render API or dashboard, and a post-deploy verification battery.
+
+**Full procedures live in [DEPLOYMENT.md](DEPLOYMENT.md)** — push-to-deploy behavior, manual triggers, rollback, env-var handling, and the known gotchas (Blueprint drift, auth seeding).
+
 ## Screenshots
 
 **Sign in and pick your role once — it stays locked for the session.**
@@ -190,6 +196,10 @@ dependencies at container start. For a real deployment use the production
 stack below.
 
 ## Deployment (production)
+
+> **Live on Render?** See [DEPLOYMENT.md](DEPLOYMENT.md) for the hosted runbook
+> (push-to-deploy, manual triggers, rollback). This section covers self-hosting
+> the production stack with Docker Compose.
 
 The production stack builds real images (no dev server, no bind mounts,
 dependencies installed at image build time) and publishes exactly one port.
