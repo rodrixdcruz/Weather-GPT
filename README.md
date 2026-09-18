@@ -99,6 +99,8 @@ USER → LOCATION (typed coords, device geolocation, or place-name search)
 | 2B | Hyperlocal risk engine + 4 roles | ✅ backend test suite green |
 | 3 | Ollama/local AI + RAG + conversational guidance | ✅ optional & fallback-safe |
 | 4 | SIH safety features (status, alerts, checklists) | ✅ deterministic layer |
+| 5 | Deployed on Render + in-app OSRM routing proxy | ✅ live, see [DEPLOYMENT.md](DEPLOYMENT.md) |
+| 6 | Judge demo suite: scenario simulation, feature tour, emergency auto-response | ✅ judge-account gated |
 
 ## Architecture
 
@@ -119,6 +121,9 @@ WeatherReading / ForecastDay    canonical models (app/services/weather/base.py)
         ▼
 RiskEngine (app/services/risk/) detectors → RiskItem(severity, score)
         │  thresholds + role priorities + guidance from profiles/*.json
+        │  judge-only: ScenarioOverlayProvider re-bends live readings
+        │  toward demo scenarios (server-side gate; public users get
+        │  genuine data, simulated cards are labeled ESTIMATE)
         ▼
 Role overlay (customer | farmer | traveler | disaster_management_officer)
         │
@@ -288,6 +293,11 @@ Things worth knowing before you expose it:
 | `SAFETY_ALERT_PROVIDER` | `null` | Official-alert source. `null` = never fabricate official alerts. |
 | `DATABASE_URL` | SQLAlchemy URL | Persistence (SOS events, safety history). SQLite works locally. |
 | `SOS_DISPATCH_ENABLED` | bool | Keep `false` until a real dispatch integration exists. |
+| `AUTH_AUTO_INIT_DB` | bool (default `true`) | Create missing tables and seed the accounts below at startup (idempotent — existing rows are never reset). |
+| `AUTH_ADMIN_USERNAME` / `AUTH_ADMIN_PASSWORD` | str / **required** | Admin account; unlocks the admin panel. No published default. |
+| `AUTH_DEMO_USERNAME` / `AUTH_DEMO_PASSWORD` | str / str (default `demo` / `demo123`) | Plain citizen demo account. Rotate before public exposure. |
+| `AUTH_JUDGE_ENABLED` / `AUTH_JUDGE_USERNAME` / `AUTH_JUDGE_PASSWORD` | bool / str / str (default `true` / `judge` / `judge123`) | Judge account: feature tour + demo console (see [Judge demo walkthrough](#judge-demo-walkthrough)). Rotate before public exposure. |
+| `AUTH_SESSION_TTL_HOURS` | int (default `12`) | Login-session lifetime. |
 
 Frontend: `VITE_API_BASE_URL` (optional — dev proxy covers local runs).
 
@@ -483,6 +493,8 @@ context, detected risks, and retrieved knowledge titles/content.
 | `GET /api/v1/routing/route?from_lat=&from_lon=&to_lat=&to_lon=&mode=driving\|walking` | Road route via the backend's OSRM proxy. Coordinates come back in `[lat, lon]` order; 404 = genuinely no road for that mode. |
 | `GET /api/v1/routing/travel-times?from_lat=&from_lon=&to_lat=lat,lon;lat,lon&mode=` | Minutes from one origin to up to 25 destinations in one OSRM table request — powers the shelter list's per-mode time badges. All routing goes through the backend so every visitor shares one server-side cache (per ~110 m cell + mode, 5–10 min TTL) and FOSSGIS sees a single well-behaved client instead of uncoordinated public traffic. |
 | `POST /api/v1/sos/trigger` | Logs an SOS event; never reports dispatch unless truly enabled. |
+| `POST /api/v1/auth/login` / `GET /auth/session` / `POST /auth/logout` | Session auth (`X-Session-Token`). Login response flags `is_admin` and `is_judge`. |
+| `GET /api/v1/admin/overview` · `GET /admin/sessions` | Admin panel data: model tiers + live AI metrics, RAG/deterministic config, and every active session with its locked role. Admin-only (403 otherwise). |
 | `GET /health` | Liveness + app info. |
 
 Latitude ∈ [-90, 90], longitude ∈ [-180, 180]; violations and provider
@@ -571,8 +583,13 @@ seeded idempotently at first start:
 - **Admin** — `AUTH_ADMIN_USERNAME` / `AUTH_ADMIN_PASSWORD` (required to
   set; no default is published). Unlocks the admin panel: AI-provider
   metrics, escalation-chain status, and system configuration view.
-- **Demo** — `AUTH_DEMO_USERNAME` / `AUTH_DEMO_PASSWORD`. Change or
-  disable it before any public exposure; it is a known credential.
+- **Demo** — `AUTH_DEMO_USERNAME` / `AUTH_DEMO_PASSWORD` (default
+  `demo` / `demo123`). Plain citizen view. Change or disable it before
+  any public exposure; it is a known credential.
+- **Judge** — `AUTH_JUDGE_USERNAME` / `AUTH_JUDGE_PASSWORD` (default
+  `judge` / `judge123`), disable with `AUTH_JUDGE_ENABLED=false`.
+  Citizen view plus the feature tour and demo console — see the
+  [Judge demo walkthrough](#judge-demo-walkthrough).
 
 Sessions are stateless tokens (`X-Session-Token`, TTL
 `AUTH_SESSION_TTL_HOURS`, default 12).
