@@ -3,7 +3,7 @@
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Backend](https://img.shields.io/badge/backend-FastAPI-009688)
 ![Frontend](https://img.shields.io/badge/frontend-React%20%2B%20Vite-61dafb)
-![Tests](https://img.shields.io/badge/tests-338%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-405%20passing-brightgreen)
 
 **Hyperlocal weather intelligence and disaster decision support.**
 
@@ -426,7 +426,7 @@ failures return clean 422/502/503 errors with readable messages.
 
 ## Testing
 
-Backend (338 tests; all external HTTP mocked — no live Open-Meteo, AQI,
+Backend (405 tests; all external HTTP mocked — no live Open-Meteo, AQI,
 geocoding or Ollama in CI):
 
 ```
