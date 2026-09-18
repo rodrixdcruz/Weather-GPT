@@ -37,6 +37,9 @@ works entirely without any AI service or paid API.
   risk changes and holds a prop matching the current weather.
 - **Login with session-locked roles** — pick customer / farmer / traveler /
   officer once at sign-in; the backend enforces it for the session.
+- **🧑‍⚖️ Evaluators: skip the setup** — sign in with the [judge demo
+  account](#judge-demo-walkthrough) for a self-guided tour and a console that
+  simulates five weather emergencies live.
 - **Trilingual UI** — English, हिन्दी, मराठी across the whole page,
   including voice input.
 
