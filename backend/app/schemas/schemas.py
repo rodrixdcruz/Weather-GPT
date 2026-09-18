@@ -153,6 +153,23 @@ class SafeZone(BaseModel):
     is_verified: bool
 
 
+class RoutingResponse(BaseModel):
+    """A road route from the OSRM proxy, in Leaflet-friendly form."""
+
+    distance_km: float
+    duration_min: int
+    # [lat, lon] pairs along the road geometry.
+    coordinates: list[list[float]]
+
+
+class TravelTimesResponse(BaseModel):
+    """Per-destination minutes from one origin (OSRM table proxy)."""
+
+    mode: str
+    # Aligned 1:1 with the requested destinations; None = unreachable.
+    minutes: list[int | None]
+
+
 class SosRequest(BaseModel):
     latitude: float
     longitude: float
@@ -202,6 +219,9 @@ class SessionUserOut(BaseModel):
     display_name: str
     role: str
     is_admin: bool
+    # True for the configured judge/hackathon account (computed from config,
+    # never stored). The frontend uses it to auto-open the feature tour.
+    is_judge: bool = False
 
 
 class SessionResponse(BaseModel):

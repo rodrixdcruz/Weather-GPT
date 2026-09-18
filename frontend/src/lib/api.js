@@ -117,6 +117,15 @@ export const api = {
   getSafeZones: (latitude, longitude) =>
     request(`/safe-zones/nearby?latitude=${latitude}&longitude=${longitude}`),
 
+  // Road routing via the backend's OSRM proxy (see lib/routing.js for the
+  // shape helpers and error semantics). The abort signal is separated from
+  // the query params and handed to fetch itself.
+  getRoute: ({ signal, ...params }) =>
+    request(`/routing/route?${new URLSearchParams(params)}`, { signal }),
+
+  getTravelTimes: ({ signal, ...params }) =>
+    request(`/routing/travel-times?${new URLSearchParams(params)}`, { signal }),
+
   // Location search (Open-Meteo geocoding, key-less). Returns places with
   // latitude/longitude ready for the other endpoints; unknown names are a
   // valid empty list, not an error.

@@ -121,6 +121,12 @@ class Settings(BaseSettings):
     # to skip the extra upstream call entirely (e.g. offline demos).
     AIR_QUALITY_ENABLED: bool = True
 
+    # --- Road routing proxy (FOSSGIS OSRM, key-less) ---
+    # The backend proxies route/travel-time lookups so ALL visitors share one
+    # server-side cache and FOSSGIS sees a single well-behaved client instead
+    # of uncoordinated public traffic. Override to point at a self-hosted OSRM.
+    ROUTING_OSRM_BASE_URL: str | None = None
+
     # --- Risk engine ---
     # Selects profiles/<name>.json with thresholds, role priorities and
     # guidance templates.
@@ -144,6 +150,13 @@ class Settings(BaseSettings):
     AUTH_DEMO_USERNAME: str = "demo"
     AUTH_DEMO_PASSWORD: str = "demo123"
     AUTH_DEMO_DISPLAY_NAME: str = "Demo User"
+    # Judge/hackathon account: same citizen view as demo, but the dashboard
+    # auto-opens the guided feature tour. Change the password for any deploy
+    # the judges can reach; set AUTH_JUDGE_ENABLED=false to disable seeding.
+    AUTH_JUDGE_ENABLED: bool = True
+    AUTH_JUDGE_USERNAME: str = "judge"
+    AUTH_JUDGE_PASSWORD: str = "judge123"
+    AUTH_JUDGE_DISPLAY_NAME: str = "Judge"
     # Create the tables + seed accounts automatically at startup (idempotent).
     # Never fatal: if the database is down the API still serves weather/risk.
     AUTH_AUTO_INIT_DB: bool = True

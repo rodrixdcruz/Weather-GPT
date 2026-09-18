@@ -263,6 +263,7 @@ Things worth knowing before you expose it:
 | `WEATHER_API_BASE_URL` | URL (optional) | Override the Open-Meteo endpoint. |
 | `AIR_QUALITY_ENABLED` | bool | Key-less US-AQI enrichment for `open_meteo` (failure-tolerant). |
 | `RISK_PROFILE` | profile name | Selects `app/services/risk/profiles/<name>.json`. |
+| `ROUTING_OSRM_BASE_URL` | URL (optional) | Base URL of the OSRM proxy upstream (default: the public FOSSGIS instance). Point at a self-hosted OSRM for heavy traffic. |
 | `AI_PROVIDER` | `mock` \| `ollama` \| `hybrid` \| `openai` | Chat brain. Mock is rule-based and always available. `hybrid` = Ollama first, then the escalation chain. |
 | `ESCALATION_PROVIDER` | `auto` \| `ovhcloud` \| `groq` \| `solar` \| `openai` | Cloud fallback tier. `auto` picks a working free default; `solar` reads `SOLAR_API_KEY` for backward compat. |
 | `ESCALATION_PROVIDERS` | comma list | Optional ordered failover chain, e.g. `groq,ovhcloud`. Rate-limited providers are skipped temporarily. |
@@ -414,7 +415,9 @@ context, detected risks, and retrieved knowledge titles/content.
 | `GET /api/v1/risk?latitude=&longitude=&role=` | Full role-aware assessment. |
 | `GET /api/v1/safety?latitude=&longitude=&role=` | WeatherGPT Safety Status + alerts + checklist. |
 | `POST /api/v1/chat/send` | Grounded chat: weather + risks + RAG + AI (or fallback). Returns `fallback_used`, `sources`, weather and risk context. |
-| `GET /api/v1/safe-zones/nearby?latitude=&longitude=` | Fixture shelters (placeholder registry). The frontend adds walking/driving in-map routing via the key-less FOSSGIS OSRM service. |
+| `GET /api/v1/safe-zones/nearby?latitude=&longitude=` | Fixture shelters (placeholder registry). |
+| `GET /api/v1/routing/route?from_lat=&from_lon=&to_lat=&to_lon=&mode=driving\|walking` | Road route via the backend's OSRM proxy. Coordinates come back in `[lat, lon]` order; 404 = genuinely no road for that mode. |
+| `GET /api/v1/routing/travel-times?from_lat=&from_lon=&to_lat=lat,lon;lat,lon&mode=` | Minutes from one origin to up to 25 destinations in one OSRM table request — powers the shelter list's per-mode time badges. All routing goes through the backend so every visitor shares one server-side cache (per ~110 m cell + mode, 5–10 min TTL) and FOSSGIS sees a single well-behaved client instead of uncoordinated public traffic. |
 | `POST /api/v1/sos/trigger` | Logs an SOS event; never reports dispatch unless truly enabled. |
 | `GET /health` | Liveness + app info. |
 
