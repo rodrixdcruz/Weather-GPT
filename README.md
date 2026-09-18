@@ -1,3 +1,7 @@
+<div align="center">
+<img src="docs/social-preview.png" alt="WeatherGPT — hyperlocal weather intelligence and disaster decision support" width="100%">
+</div>
+
 # WeatherGPT — SIH26068
 
 ![Release](https://img.shields.io/github/v/release/rodrixdcruz/Weather-GPT)
