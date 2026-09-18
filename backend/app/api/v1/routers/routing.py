@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import JSONResponse
 
 from app.core.logging import get_logger
 from app.schemas.schemas import RoutingResponse, TravelTimesResponse
@@ -38,6 +39,10 @@ async def get_route(
     Coordinates come back in [lat, lon] order, ready for Leaflet. 404 means
     genuinely no road for that mode (e.g. no footpath across a river) — the
     client keeps its external-maps handoff for that case.
+
+    Responses carry Cache-Control: public with a short max-age: routes are
+    point-in-time traffic estimates, and the server-side TTL cache already
+    absorbs repeat load upstream.
     """
     service = OsrmRoutingService()
     try:
@@ -51,10 +56,16 @@ async def get_route(
         "routing.route served mode=%s duration_min=%s distance_km=%s",
         mode, route["duration_min"], route["distance_km"],
     )
-    return RoutingResponse(
+    response = RoutingResponse(
         distance_km=route["distance_km"],
         duration_min=route["duration_min"],
         coordinates=route["coordinates"],
+    )
+    # 60 s client-side reuse: the server cache owns longer-term dedup, this
+    # just stops a single user's quick re-click from re-traversing the proxy.
+    return JSONResponse(
+        content=response.model_dump(mode="json"),
+        headers={"Cache-Control": "public, max-age=60"},
     )
 
 
