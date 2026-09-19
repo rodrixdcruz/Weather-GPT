@@ -2,7 +2,7 @@
 
 How MausamBagha AI ships from Git to the live site, how to deploy by hand, and how to undo a bad deploy. Everything here reflects the production setup as of 2026-09-18 and uses commands that were actually run against it.
 
-**Repository:** `https://github.com/rodrixdcruz/Weather-GPT` (branch `main`)
+**Repository:** `https://github.com/rodrixdcruz/mausambagha-ai` (branch `main`)
 **Live site:** https://weathergpt-web.onrender.com (frontend) → https://weather-gpt-1-ze0n.onrender.com (API)
 
 ---

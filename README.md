@@ -4,7 +4,7 @@
 
 # MausamBagha AI — SIH26068
 
-![Release](https://img.shields.io/github/v/release/rodrixdcruz/Weather-GPT)
+![Release](https://img.shields.io/github/v/release/rodrixdcruz/mausambagha-ai)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Backend](https://img.shields.io/badge/backend-FastAPI-009688)
 ![Frontend](https://img.shields.io/badge/frontend-React%20%2B%20Vite-61dafb)

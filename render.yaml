@@ -10,7 +10,7 @@
 #    off. Nothing here talks to localhost, Docker, or an ngrok tunnel.
 #
 # HOW TO DEPLOY
-#   Render dashboard -> New + -> Blueprint -> pick rodrixdcruz/Weather-GPT.
+#   Render dashboard -> New + -> Blueprint -> pick rodrixdcruz/mausambagha-ai.
 #   Render reads this file and creates BOTH services below, then prompts for the
 #   secrets marked `sync: false`. Nothing else is needed.
 #

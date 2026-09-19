@@ -69,7 +69,7 @@ _MODES = {
 _DEFAULT_TIMEOUT_SECONDS = 15.0
 # FOSSGIS fair-use asks for an identifying User-Agent. No secrets here —
 # it is the public repository URL.
-_USER_AGENT = "MausamBagha AI/0.1 (https://github.com/rodrixdcruz/Weather-GPT)"
+_USER_AGENT = "MausamBagha AI/0.1 (https://github.com/rodrixdcruz/mausambagha-ai)"
 
 
 def _round(v: float) -> float:
