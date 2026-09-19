@@ -4,7 +4,7 @@ Free cloud LLM presets for the hybrid provider's escalation tier.
 The escalation tier used to be Solar Pro 4 (paid). It is now any
 OpenAI-compatible chat-completions endpoint, and the presets below are the
 providers that offer a **permanent free tier** — no credit card, no trial
-expiry — so WeatherGPT can answer broad-knowledge questions and cover for a
+expiry — so MausamBagha AI can answer broad-knowledge questions and cover for a
 missing local model without a bill.
 
 Adding a provider is one dict entry here; nothing in the routers or the

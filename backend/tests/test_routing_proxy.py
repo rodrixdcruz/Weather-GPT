@@ -69,7 +69,7 @@ class TestRouteService:
             return httpx.Response(200, json=_route_ok())
 
         await _service(handler).get_route(19.07, 72.87, 19.08, 72.88, "driving")
-        assert "WeatherGPT" in captured["ua"]
+        assert "MausamBagha AI" in captured["ua"]
 
     async def test_second_call_same_cell_served_from_cache(self):
         calls = {"n": 0}

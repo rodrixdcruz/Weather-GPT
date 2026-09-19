@@ -58,7 +58,7 @@
       "id": "official-sources",
       "title": "Official Weather and Alert Sources (India)",
       "tags": ["official", "imd", "ndma", "alerts", "authorities", "warnings"],
-      "content": "WeatherGPT produces its own risk interpretation from meteorological data; it is not an official warning system. For authoritative forecasts and warnings in India, consult the India Meteorological Department (imd.gov.in and Mausam app) and national/state disaster management authorities (ndma.gov.in). In a life-threatening emergency contact local emergency services; India's national emergency helpline is 112. WeatherGPT guidance complements but never replaces official alerts."
+      "content": "MausamBagha AI produces its own risk interpretation from meteorological data; it is not an official warning system. For authoritative forecasts and warnings in India, consult the India Meteorological Department (imd.gov.in and Mausam app) and national/state disaster management authorities (ndma.gov.in). In a life-threatening emergency contact local emergency services; India's national emergency helpline is 112. MausamBagha AI guidance complements but never replaces official alerts."
     },
     {
       "id": "activity-planning",

@@ -1,6 +1,6 @@
 # Deployment Runbook
 
-How WeatherGPT ships from Git to the live site, how to deploy by hand, and how to undo a bad deploy. Everything here reflects the production setup as of 2026-09-18 and uses commands that were actually run against it.
+How MausamBagha AI ships from Git to the live site, how to deploy by hand, and how to undo a bad deploy. Everything here reflects the production setup as of 2026-09-18 and uses commands that were actually run against it.
 
 **Repository:** `https://github.com/rodrixdcruz/Weather-GPT` (branch `main`)
 **Live site:** https://weathergpt-web.onrender.com (frontend) → https://weather-gpt-1-ze0n.onrender.com (API)
@@ -18,7 +18,7 @@ How WeatherGPT ships from Git to the live site, how to deploy by hand, and how t
 | Auto-deploy | on (`commit` trigger) | on (`commit` trigger) — re-armed 2026-09-18; see §6 |
 | Public port | 443 (Render-managed TLS) | Render-internal; only the frontend talks to it |
 
-There are deliberately **no other WeatherGPT services** — the old broken `weather-gpt-0eru` service was deleted. If you see a third URL somewhere, it is stale documentation.
+There are deliberately **no other MausamBagha AI services** — the old broken `weather-gpt-0eru` service was deleted. If you see a third URL somewhere, it is stale documentation.
 
 All commands below authenticate with `RENDER_API_KEY` (already set as a user environment variable on this machine):
 

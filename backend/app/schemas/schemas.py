@@ -235,9 +235,9 @@ class SessionResponse(BaseModel):
 
 
 class SafetyAssessmentOut(BaseModel):
-    """WeatherGPT Safety Status for one location + role.
+    """MausamBagha AI Safety Status for one location + role.
 
-    `status` is WeatherGPT's own escalation label (normal/watch/warning/
+    `status` is MausamBagha AI's own escalation label (normal/watch/warning/
     critical) — never an official government warning level.
     """
 

@@ -29,7 +29,7 @@ export default function TopBar({
             WG
           </div>
           <div>
-            <h1 className="font-display font-bold text-[17px] m-0">WeatherGPT</h1>
+            <h1 className="font-display font-bold text-[17px] m-0">MausamBagha AI</h1>
             <small className="block text-slate-300 text-[10.5px] uppercase tracking-wide">
               {t(language, 'brandSub')}
             </small>

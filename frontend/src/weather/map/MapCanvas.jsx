@@ -77,7 +77,7 @@ export default function MapCanvas({ location }) {
             <text x="760" y="540">{fmtLon(cLon + 3)}</text>
           </g>
         ) : null}
-        <text x="500" y="980" textAnchor="middle" fontSize="24" fill="rgba(20,32,60,.45)" fontFamily="system-ui">WeatherGPT · LIVE MAP</text>
+        <text x="500" y="980" textAnchor="middle" fontSize="24" fill="rgba(20,32,60,.45)" fontFamily="system-ui">MausamBagha AI · LIVE MAP</text>
       </svg>
       {label ? <span className="map-canvas-locale">{label}</span> : null}
     </div>

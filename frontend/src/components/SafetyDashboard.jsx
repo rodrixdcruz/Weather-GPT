@@ -4,7 +4,7 @@ import { t } from '../i18n'
 import { ErrorState, LoadingState } from './StateViews'
 import { SeverityBadge } from './RiskPanel'
 
-// WeatherGPT's own escalation ladder. NOT official government warning
+// MausamBagha AI's own escalation ladder. NOT official government warning
 // levels — the disclaimer below says so explicitly.
 const STATUS_STYLE = {
   normal: { border: 'border-emerald-500/40', bg: 'bg-emerald-500/5', text: 'text-emerald-400', icon: '✅' },

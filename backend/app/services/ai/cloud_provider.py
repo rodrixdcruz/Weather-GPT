@@ -12,7 +12,7 @@ Never the default: local Ollama is always tried first, and this provider is
 consulted only when the local model cannot answer, or the scope guard flagged
 the question as needing broader knowledge than ground-truth weather data.
 
-Grounding contract (same as every WeatherGPT provider): the model may only
+Grounding contract (same as every MausamBagha AI provider): the model may only
 use the structured context it is given. It must never invent weather numbers,
 official alerts, or sources.
 
@@ -39,7 +39,7 @@ class _Unset:
 
 _UNSET = _Unset()
 
-_SYSTEM_PROMPT = """You are WeatherGPT, a hyperlocal weather-safety assistant.
+_SYSTEM_PROMPT = """You are MausamBagha AI, a hyperlocal weather-safety assistant.
 You answer questions using ONLY the WEATHER CONTEXT, RISK CONTEXT and
 RETRIEVED SAFETY GUIDANCE provided below.
 

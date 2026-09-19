@@ -3,7 +3,7 @@ Hybrid AI provider: local-first two-tier routing.
 
     Ollama (local, free)  →  free cloud escalation tier  →  data fallback
 
-- WeatherGPT-scope questions go to LOCAL Ollama first, always.
+- MausamBagha AI-scope questions go to LOCAL Ollama first, always.
 - The cloud tier is consulted only when Ollama is unavailable, times out,
   errors, or the scope guard flagged the question as needing broader/general
   knowledge than ground-truth weather data.

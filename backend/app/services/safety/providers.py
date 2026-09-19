@@ -1,10 +1,10 @@
 """
 Official-alert provider abstraction.
 
-WeatherGPT NEVER fabricates government alerts. Official warnings can only
+MausamBagha AI NEVER fabricates government alerts. Official warnings can only
 enter through a SafetyAlertProvider implementation backed by a real,
 authoritative feed. The default `null` provider returns an empty list and
-the UI clearly separates "WeatherGPT-generated risk" from "official
+the UI clearly separates "MausamBagha AI-generated risk" from "official
 alerts" (of which there are none until a real provider is configured via
 SAFETY_ALERT_PROVIDER).
 """
@@ -31,7 +31,7 @@ class NullSafetyAlertProvider(SafetyAlertProvider):
     """No official feed configured — always returns no official alerts.
 
     This is the honest default. The safety dashboard still works: it shows
-    WeatherGPT-derived status with the official-source disclaimer.
+    MausamBagha AI-derived status with the official-source disclaimer.
     """
 
     name = "null"

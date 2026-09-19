@@ -1,8 +1,8 @@
 <div align="center">
-<img src="docs/social-preview.png" alt="WeatherGPT — hyperlocal weather intelligence and disaster decision support" width="100%">
+<img src="docs/social-preview.png" alt="MausamBagha AI — hyperlocal weather intelligence and disaster decision support" width="100%">
 </div>
 
-# WeatherGPT — SIH26068
+# MausamBagha AI — SIH26068
 
 ![Release](https://img.shields.io/github/v/release/rodrixdcruz/Weather-GPT)
 ![License](https://img.shields.io/badge/license-MIT-blue)
@@ -471,15 +471,15 @@ context, detected risks, and retrieved knowledge titles/content.
 
 ## Safety features (Phase 4)
 
-- **WeatherGPT Safety Status**: deterministic escalation
+- **MausamBagha AI Safety Status**: deterministic escalation
   NORMAL → WATCH → WARNING → CRITICAL mapped from risk severity.
-  Explicitly labeled as WeatherGPT's own interpretation — *not* an
+  Explicitly labeled as MausamBagha AI's own interpretation — *not* an
   official government warning level.
 - **Alerts**: generated from detected risks (moderate+), with
   deterministic IDs for de-duplication, source attribution, and
   recommended actions. Official alerts can only come from a configured
   `SafetyAlertProvider`; the default ships none and the UI separates
-  "WeatherGPT-generated" from "official".
+  "MausamBagha AI-generated" from "official".
 - **Checklists**: risk-driven, role-capped, general safety items plus
   always-on preparedness reminders.
 - **Emergency info**: India's national helpline (112) and pointers to
@@ -496,7 +496,7 @@ context, detected risks, and retrieved knowledge titles/content.
 | `GET /api/v1/weather/current?latitude=&longitude=` | Weather + overall risk (legacy shape). `weather.air_quality` carries US AQI when available. |
 | `GET /api/v1/weather/forecast?latitude=&longitude=&days=1..14` | Multi-day forecast. |
 | `GET /api/v1/risk?latitude=&longitude=&role=` | Full role-aware assessment. |
-| `GET /api/v1/safety?latitude=&longitude=&role=` | WeatherGPT Safety Status + alerts + checklist. |
+| `GET /api/v1/safety?latitude=&longitude=&role=` | MausamBagha AI Safety Status + alerts + checklist. |
 | `POST /api/v1/chat/send` | Grounded chat: weather + risks + RAG + AI (or fallback). Returns `fallback_used`, `sources`, weather and risk context. |
 | `GET /api/v1/safe-zones/nearby?latitude=&longitude=` | Fixture shelters (placeholder registry). |
 | `GET /api/v1/routing/route?from_lat=&from_lon=&to_lat=&to_lon=&mode=driving\|walking` | Road route via the backend's OSRM proxy. Coordinates come back in `[lat, lon]` order; 404 = genuinely no road for that mode. |
@@ -550,7 +550,7 @@ npm run build     # production build must succeed
 
 ## Safety limitations (honest scope)
 
-- WeatherGPT does **not** replace government emergency systems; it
+- MausamBagha AI does **not** replace government emergency systems; it
   complements official warnings and services.
 - No official alert feed ships by default — official alerts are never
   fabricated, and none appear until a real `SafetyAlertProvider` exists.

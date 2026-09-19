@@ -40,7 +40,7 @@ export default function LoginPage({ language, onLanguageChange, onSignIn }) {
             WG
           </div>
           <div className="text-left">
-            <h1 className="font-display font-bold text-[19px] m-0">WeatherGPT</h1>
+            <h1 className="font-display font-bold text-[19px] m-0">MausamBagha AI</h1>
             <small className="block text-slate-300 text-[10.5px] uppercase tracking-wide">
               {t(language, 'brandSub')}
             </small>

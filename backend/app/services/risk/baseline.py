@@ -1,7 +1,7 @@
 """
 Baseline ("anomaly-lite") abstraction.
 
-WeatherGPT deliberately does NOT pretend to have historical climate
+MausamBagha AI deliberately does NOT pretend to have historical climate
 anomaly data. Detectors compare measurements against the configured
 meteorological baseline thresholds in the risk profile. This module
 exists so a future historical/climatological provider (e.g. 30-year

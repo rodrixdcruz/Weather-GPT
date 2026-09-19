@@ -1,4 +1,4 @@
-# WeatherGPT — full stack. Postgres is always started; Ollama is an
+# MausamBagha AI — full stack. Postgres is always started; Ollama is an
 # optional profile (docker compose --profile ai up).
 services:
   db:

@@ -1,7 +1,7 @@
 """
 Safety-layer models.
 
-Key contract: everything here is WeatherGPT-generated interpretation of
+Key contract: everything here is MausamBagha AI-generated interpretation of
 weather data, explicitly NOT an official government alert. Models carry
 `source` fields so the UI can always distinguish the two. Official alerts
 can only enter the system through a SafetyAlertProvider (see providers.py)
@@ -10,8 +10,8 @@ can only enter the system through a SafetyAlertProvider (see providers.py)
 from dataclasses import dataclass, field
 from enum import Enum
 
-# WeatherGPT's own escalation ladder, derived deterministically from risk
-# severity. Deliberately labeled "WeatherGPT Safety Status" in the UI —
+# MausamBagha AI's own escalation ladder, derived deterministically from risk
+# severity. Deliberately labeled "MausamBagha AI Safety Status" in the UI —
 # these are NOT official government warning levels.
 ESCALATION_ORDER = ("normal", "watch", "warning", "critical")
 
@@ -78,7 +78,7 @@ class SafetyAssessment:
     checklist: list[ChecklistItem] = field(default_factory=list)
     official_alerts: list[SafetyAlert] = field(default_factory=list)
     disclaimer: str = (
-        "WeatherGPT Safety Status is an automated interpretation of weather data. "
+        "MausamBagha AI Safety Status is an automated interpretation of weather data. "
         "It is NOT an official government warning. For authoritative forecasts and "
         "alerts follow your national meteorological service and local authorities."
     )

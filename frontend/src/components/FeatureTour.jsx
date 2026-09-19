@@ -1,4 +1,4 @@
-// Guided feature tour — a spotlight walkthrough of everything WeatherGPT does,
+// Guided feature tour — a spotlight walkthrough of everything MausamBagha AI does,
 // built for hackathon judges and first-time visitors.
 //
 // Zero dependencies: one full-screen overlay renders a transparent "window"

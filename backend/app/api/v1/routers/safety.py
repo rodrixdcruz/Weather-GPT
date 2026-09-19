@@ -20,10 +20,10 @@ async def get_safety_assessment(
     scenario: str = Query("normal", description="Judge-demo scenario (ignored for other sessions)"),
     session: LoginSession | None = Depends(optional_session),
 ):
-    """WeatherGPT Safety Status for a location.
+    """MausamBagha AI Safety Status for a location.
 
     Deterministic: same weather + same profile => same status/alerts.
-    `status` is WeatherGPT's own escalation label, NOT an official
+    `status` is MausamBagha AI's own escalation label, NOT an official
     government warning; official alerts only appear if a real
     SafetyAlertProvider is configured (none ships by default).
     """

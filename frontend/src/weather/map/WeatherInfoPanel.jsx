@@ -31,7 +31,7 @@ export default function WeatherInfoPanel({ location, weather, risk, conditionLab
       </div>
       <p className="map-info-panel__action">{risk.action}</p>
 
-      <footer className="map-info-panel__foot">Source: {weather.source || 'WeatherGPT API'}</footer>
+      <footer className="map-info-panel__foot">Source: {weather.source || 'MausamBagha AI API'}</footer>
     </aside>
   )
 }

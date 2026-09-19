@@ -1,6 +1,6 @@
 """
 Safety engine: turns the deterministic risk assessment into a
-WeatherGPT Safety Status, de-duplicated alerts, and a role-aware
+MausamBagha AI Safety Status, de-duplicated alerts, and a role-aware
 checklist. Purely derived from real weather data — never invents alerts,
 and never claims official origin (official alerts only come from a
 SafetyAlertProvider, if one is ever configured).

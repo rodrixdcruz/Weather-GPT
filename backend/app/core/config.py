@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # --- App ---
-    APP_NAME: str = "WeatherGPT"
+    APP_NAME: str = "MausamBagha AI"
     ENV: str = "development"
     LOG_LEVEL: str = "INFO"
     API_V1_PREFIX: str = "/api/v1"
@@ -134,7 +134,7 @@ class Settings(BaseSettings):
 
     # --- Safety layer ---
     # Provider of OFFICIAL government/authority alerts. "null" ships by
-    # default: WeatherGPT then shows ONLY its own derived status, clearly
+    # default: MausamBagha AI then shows ONLY its own derived status, clearly
     # labeled, and never fabricates official alerts.
     SAFETY_ALERT_PROVIDER: str = "null"
 

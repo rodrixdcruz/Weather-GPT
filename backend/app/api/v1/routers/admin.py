@@ -1,7 +1,7 @@
 """
 Admin panel API (admin accounts only).
 
-WeatherGPT's intelligence is a MODEL STACK, so the panel is built around
+MausamBagha AI's intelligence is a MODEL STACK, so the panel is built around
 model observability rather than generic server stats:
 
   1. Which model tiers are configured and actually reachable

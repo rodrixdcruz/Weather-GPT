@@ -156,6 +156,6 @@ class SafetyEvent(Base):
     severity: Mapped[str] = mapped_column(String)  # low | moderate | high | extreme
     latitude: Mapped[float] = mapped_column(Float)  # rounded to ~2 decimals (~1km)
     longitude: Mapped[float] = mapped_column(Float)  # rounded to ~2 decimals (~1km)
-    status: Mapped[str] = mapped_column(String)  # WeatherGPT safety status at detection
+    status: Mapped[str] = mapped_column(String)  # MausamBagha AI safety status at detection
     source: Mapped[str] = mapped_column(String)  # always "weathergpt_risk_engine" for now
     detected_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

@@ -5,7 +5,7 @@ a reading without air quality means "no data", and the detector stays
 silent rather than guessing.
 
 Thresholds come from the risk profile's `us_aqi` bands (US EPA breakpoints
-converted to WeatherGPT risk severities; India's CPCB national AQI uses
+converted to MausamBagha AI risk severities; India's CPCB national AQI uses
 different scales, so the profile remains adjustable per region).
 """
 from app.services.risk.guidance import guidance_for

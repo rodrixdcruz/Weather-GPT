@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * WeatherGPT · Centralized weather UI state system
+ * MausamBagha AI · Centralized weather UI state system
  * ----------------------------------------------------------------------------
  * Converts backend weather + role-aware risk-assessment payloads and local
  * time into one predictable UI state. The backend remains the single source

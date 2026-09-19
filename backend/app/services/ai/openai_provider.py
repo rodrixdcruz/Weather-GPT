@@ -13,7 +13,7 @@ from app.core.config import get_settings
 from app.services.ai.base import AIProvider, AIReply, ChatTurn, WeatherContext
 from app.services.ai.translations import language_prompt_clause
 
-_SYSTEM_PROMPT = """You are WeatherGPT, a disaster-preparedness assistant for India.
+_SYSTEM_PROMPT = """You are MausamBagha AI, a disaster-preparedness assistant for India.
 Rules:
 - ONLY use the weather facts given to you in the context block. Never invent numbers.
 - Always state whether the data is VERIFIED or an ESTIMATE.

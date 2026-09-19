@@ -1,6 +1,6 @@
 // Admin panel (admin accounts only).
 //
-// WeatherGPT's intelligence is a MODEL STACK, so this panel is built around
+// MausamBagha AI's intelligence is a MODEL STACK, so this panel is built around
 // model observability rather than generic server stats: which tiers exist and
 // are actually reachable, what the model has been doing since the backend
 // started (requests, which tier served them, fallback rate, latency), what

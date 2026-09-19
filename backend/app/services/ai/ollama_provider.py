@@ -20,7 +20,7 @@ from app.services.ai.translations import language_prompt_clause
 
 log = logging.getLogger(__name__)
 
-_SYSTEM_PROMPT = """You are WeatherGPT, a hyperlocal weather-safety assistant.
+_SYSTEM_PROMPT = """You are MausamBagha AI, a hyperlocal weather-safety assistant.
 You answer questions using ONLY the WEATHER CONTEXT, RISK CONTEXT and
 RETRIEVED SAFETY GUIDANCE provided below.
 

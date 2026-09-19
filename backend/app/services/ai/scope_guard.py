@@ -1,5 +1,5 @@
 """
-Lightweight scope guard for WeatherGPT.
+Lightweight scope guard for MausamBagha AI.
 
 Goal: obvious nonsense ("svgsvgsvg", "asdf", a credit-card number) and
 clearly unrelated requests ("write me a poem about cats") must NOT burn
@@ -25,7 +25,7 @@ from app.services.ai.translations import ScopeRefusalMessages, normalize_languag
 
 
 class ScopeVerdict(Enum):
-    IN_SCOPE = "in_scope"                  # normal WeatherGPT question → Ollama first
+    IN_SCOPE = "in_scope"                  # normal MausamBagha AI question → Ollama first
     BROAD_KNOWLEDGE = "broad_knowledge"    # in scope but needs the escalation tier
     OUT_OF_SCOPE = "out_of_scope"          # refuse without any AI call
 

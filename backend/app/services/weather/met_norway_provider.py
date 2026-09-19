@@ -43,7 +43,7 @@ log = logging.getLogger(__name__)
 
 _DEFAULT_BASE_URL = "https://api.met.no/weatherapi/locationforecast/2.0/compact"
 # MET's terms require an identifying User-Agent with contact info.
-_DEFAULT_USER_AGENT = "WeatherGPT/1.0 (https://github.com/rodrixdcruz/Weather-GPT)"
+_DEFAULT_USER_AGENT = "MausamBagha AI/1.0 (https://github.com/rodrixdcruz/Weather-GPT)"
 _DEFAULT_TIMEOUT_SECONDS = 10.0
 
 # MET symbol stems -> display text. Suffixes like _day/_night/_polartwilight
