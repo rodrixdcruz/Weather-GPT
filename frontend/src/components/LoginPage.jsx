@@ -37,7 +37,7 @@ export default function LoginPage({ language, onLanguageChange, onSignIn }) {
         {/* Brand */}
         <div className="flex items-center justify-center gap-2.5 mb-5">
           <div className="w-[38px] h-[38px] rounded-[10px] bg-gradient-to-br from-sky to-[#1c5fb0] flex items-center justify-center font-bold text-white text-[15px]">
-            WG
+            MB
           </div>
           <div className="text-left">
             <h1 className="font-display font-bold text-[19px] m-0">MausamBagha AI</h1>

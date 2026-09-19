@@ -26,7 +26,7 @@ export default function TopBar({
       <div className="flex items-center justify-between gap-2.5 px-5 py-3.5 border-b border-border bg-navy-950/70 backdrop-blur sticky top-0 z-50 flex-wrap">
         <div className="flex items-center gap-2.5">
           <div className="w-8.5 h-8.5 w-[34px] h-[34px] rounded-[9px] bg-gradient-to-br from-sky to-[#1c5fb0] flex items-center justify-center font-bold text-white text-sm">
-            WG
+            MB
           </div>
           <div>
             <h1 className="font-display font-bold text-[17px] m-0">MausamBagha AI</h1>
